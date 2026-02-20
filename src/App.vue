@@ -1,12 +1,10 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
-import { initSupabase } from '@/lib/supabase';
+import { ref, onMounted } from 'vue';
+import { supabase } from '@/lib/supabase';
 import AuthModal from '@/components/AuthModal.vue';
 import EditorModal from '@/components/EditorModal.vue';
 
 // --- State ---
-const config = reactive({ url: '', key: '' });
-const tempConfig = reactive({ url: '', key: '' });
 const user = ref(null);
 const profiles = ref([]);
 const filaments = ref([]);
@@ -19,47 +17,20 @@ const editorType = ref('profile'); // 'profile' or 'filament'
 const showAuthModal = ref(false);
 const loading = ref(false);
 
-let supabase = null;
-
 // --- Lifecycle ---
 onMounted(() => {
-  const savedUrl = localStorage.getItem('bambu_sb_url');
-  const savedKey = localStorage.getItem('bambu_sb_key');
-  if (savedUrl && savedKey) {
-    config.url = savedUrl;
-    config.key = savedKey;
-    initializeSupabase();
-  }
-});
-
-// --- Config & Init ---
-const saveConfig = () => {
-  if (!tempConfig.url || !tempConfig.key) return alert('Please enter both.');
-  config.url = tempConfig.url;
-  config.key = tempConfig.key;
-  localStorage.setItem('bambu_sb_url', tempConfig.url);
-  localStorage.setItem('bambu_sb_key', tempConfig.key);
-  initializeSupabase();
-};
-
-const initializeSupabase = async () => {
-  try {
-    supabase = initSupabase(config.url, config.key);
-    if (!supabase) return;
-
-    const { data: { session } } = await supabase.auth.getSession();
+  supabase.auth.getSession().then(({ data: { session } }) => {
     user.value = session?.user || null;
+    if (user.value) loadUserData();
+  });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      user.value = session?.user || null;
-      if (user.value) loadUserData();
-    });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    user.value = session?.user || null;
+    if (user.value) loadUserData();
+  });
 
-    loadData();
-  } catch (e) {
-    console.error("Init Error:", e);
-  }
-};
+  loadData();
+});
 
 // --- Data Loading ---
 const loadData = async () => {
@@ -90,9 +61,21 @@ const handleAuth = async ({ mode, email, password }) => {
   if (mode === 'signin') {
     const res = await supabase.auth.signInWithPassword({ email, password });
     error = res.error;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) alert(error.message);
+    else showAuthModal.value = false;
   } else {
     const res = await supabase.auth.signUp({ email, password });
     error = res.error;
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+      alert(error.message);
+    } else {
+      if (data && !data.session) {
+        alert('Registration successful! Please check your email to confirm your account.');
+      }
+      showAuthModal.value = false;
+    }
   }
   
   if (error) alert(error.message);
@@ -146,11 +129,65 @@ const createNewProfile = () => {
 const createNewFilament = () => {
   const newF = {
     user_id: user.value.id,
-    name: 'New Filament',
-    basic_settings: { brand: 'Generic', material: 'PLA', color: '#000000', density: 1.24, price: 20 },
-    temp_settings: { nozzle_min: 190, nozzle_max: 230, first_layer_nozzle: 220, other_layers_nozzle: 220, first_layer_bed: 65, other_layers_bed: 65, vitrification_temp: 55 },
-    cooling_settings: { min_fan_speed: 100, max_fan_speed: 100, min_layer_time: 8, fan_always_on: true, aux_fan_speed: 0 },
-    override_settings: { max_volumetric_speed: 15, retraction_length: 0.8, z_hop: 0.4 }
+    name: 'New Generic PLA',
+    basic_settings: {
+      filament_type: 'PLA',
+      vendor: 'Generic',
+      color: '#000000',
+      diameter: 1.75,
+      flow_ratio: 0.98,
+      density: 1.24,
+      shrinkage: 0.4,
+      velocity_adaptation: 0.5,
+      price: 20,
+      softening_temp: 60,
+      prime_vol_filament_change: 45,
+      prime_vol_hotend_change: 45,
+      ramming_len_extruder_change: 4.5,
+      ramming_len_hotend_change: 4.5,
+      travel_time_ramming_extruder: 250,
+      travel_time_ramming_hotend: 250,
+      precool_temp_extruder: 140,
+      precool_temp_hotend: 140,
+    },
+    temp_settings: {
+      nozzle_temp_min: 190,
+      nozzle_temp_max: 230,
+      cool_plate_super_initial: 35,
+      cool_plate_super_other: 35,
+      cool_plate_initial: 35,
+      cool_plate_other: 35,
+      eng_plate_initial: 55,
+      eng_plate_other: 55,
+      smooth_pei_initial: 55,
+      smooth_pei_other: 55,
+      textured_pei_initial: 55,
+      textured_pei_other: 55,
+      first_layer_nozzle: 220,
+      other_layers_nozzle: 220,
+      vitrification_temp: 60,
+    },
+    cooling_settings: {
+      min_fan_speed: 100,
+      max_fan_speed: 100,
+      min_layer_time: 8,
+      fan_always_on: true,
+      aux_fan_speed: 70
+    },
+    override_settings: {
+      adaptive_volumetric_speed: true,
+      max_volumetric_speed: 12,
+      ramming_vol_extruder_change: 12,
+      ramming_vol_hotend_change: 12,
+      retraction_length: 0.8,
+      z_hop: 0.4
+    },
+    scarf_seam: {
+      scarf_seam_type: 'none',
+      scarf_start_height: 0,
+      scarf_slope_gap: 10,
+      scarf_length: 5
+    }
   };
   openEditor(newF, 'filament');
 };
@@ -190,7 +227,8 @@ const handleSaveItem = async (itemToSave) => {
       basic_settings: itemToSave.basic_settings, 
       temp_settings: itemToSave.temp_settings, 
       cooling_settings: itemToSave.cooling_settings, 
-      override_settings: itemToSave.override_settings 
+      override_settings: itemToSave.override_settings,
+      scarf_seam: itemToSave.scarf_seam
     };
   }
 
@@ -218,20 +256,8 @@ const handleSaveItem = async (itemToSave) => {
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 font-sans">
     
-    <!-- Config Screen -->
-    <div v-if="!config.url || !config.key" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Connect to Supabase</h2>
-        <div class="space-y-4">
-          <input v-model="tempConfig.url" type="text" placeholder="Project URL" class="w-full p-2 border rounded">
-          <input v-model="tempConfig.key" type="password" placeholder="Anon Public Key" class="w-full p-2 border rounded">
-          <button @click="saveConfig" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded">Connect</button>
-        </div>
-      </div>
-    </div>
-
     <!-- Main UI -->
-    <div v-else class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 overflow-hidden">
       <!-- Sidebar -->
       <aside class="w-64 bg-white border-r border-gray-200 flex flex-col z-10 hidden md:flex">
         <div class="p-6 border-b border-gray-100">
@@ -269,11 +295,11 @@ const handleSaveItem = async (itemToSave) => {
             <button v-if="user" @click="createNewProfile" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Profile</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="profile in profiles" :key="profile.id" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
+            <div v-for="profile in profiles" :key="profile.id" @click="openEditor(profile, 'profile')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow">
               <div class="p-5 flex-1">
                 <div class="flex justify-between items-start">
                   <h3 class="font-bold text-lg text-gray-900 mb-1 truncate">{{ profile.name }}</h3>
-                  <button @click="toggleFavorite(profile.id, 'profile')" :class="isFavorite(profile.id, 'profile') ? 'text-yellow-400' : 'text-gray-300'" class="hover:text-yellow-500 text-xl">★</button>
+                  <button @click.stop="toggleFavorite(profile.id, 'profile')" :class="isFavorite(profile.id, 'profile') ? 'text-yellow-400' : 'text-gray-300'" class="hover:text-yellow-500 text-xl">★</button>
                 </div>
                 <div class="flex items-center gap-2 text-xs text-gray-500 mb-4">
                   <span class="bg-gray-100 px-2 py-0.5 rounded border border-gray-200">{{ isOwner(profile) ? 'My Profile' : 'Community' }}</span>
@@ -284,9 +310,8 @@ const handleSaveItem = async (itemToSave) => {
                   <div class="flex justify-between"><span>Accel:</span> <span class="font-medium text-gray-900">{{ profile.speed?.acceleration || '5000' }}</span></div>
                 </div>
               </div>
-              <div class="bg-gray-50 p-3 px-5 border-t border-gray-100 flex justify-between items-center">
-                <button @click="openEditor(profile, 'profile')" class="text-emerald-600 font-medium text-sm hover:underline">{{ isOwner(profile) ? 'Edit' : 'View' }} Settings</button>
-                <button v-if="user && !isOwner(profile)" @click="cloneProfile(profile)" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">Fork</button>
+              <div v-if="user && !isOwner(profile)" class="bg-gray-50 p-3 px-5 border-t border-gray-100 flex justify-end items-center">
+                <button @click.stop="cloneProfile(profile)" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">Fork</button>
               </div>
             </div>
           </div>
@@ -299,7 +324,7 @@ const handleSaveItem = async (itemToSave) => {
             <button v-if="user" @click="createNewFilament" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Filament</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div v-for="fil in filaments" :key="fil.id" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div v-for="fil in filaments" :key="fil.id" @click="openEditor(fil, 'filament')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
               <div class="h-3 w-full border-b border-gray-100" :style="{ backgroundColor: fil.basic_settings?.color || '#ccc' }"></div>
               <div class="p-5">
                 <h3 class="font-bold text-lg text-gray-900 truncate">{{ fil.name }}</h3>
@@ -313,9 +338,6 @@ const handleSaveItem = async (itemToSave) => {
                     <div class="text-xs text-blue-600 font-bold mb-1">Fan</div>
                     <div class="font-mono text-gray-800 font-bold">{{ fil.cooling_settings?.max_fan_speed }}%</div>
                   </div>
-                </div>
-                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-                   <button @click="openEditor(fil, 'filament')" class="text-emerald-600 font-medium text-sm hover:underline">{{ isOwner(fil) ? 'Edit' : 'View' }} Parameters</button>
                 </div>
               </div>
             </div>
