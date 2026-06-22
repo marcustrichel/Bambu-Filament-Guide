@@ -59,22 +59,15 @@ const handleAuth = async ({ mode, email, password }) => {
   if (!email || !password) return;
   let error;
   if (mode === 'signin') {
-    const res = await supabase.auth.signInWithPassword({ email, password });
-    error = res.error;
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-    else showAuthModal.value = false;
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    error = err;
   } else {
-    const res = await supabase.auth.signUp({ email, password });
-    error = res.error;
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert(error.message);
-    } else {
+    const { data, error: err } = await supabase.auth.signUp({ email, password });
+    error = err;
+    if (!error) {
       if (data && !data.session) {
         alert('Registration successful! Please check your email to confirm your account.');
       }
-      showAuthModal.value = false;
     }
   }
   
@@ -117,7 +110,7 @@ const createNewProfile = () => {
     user_id: user.value.id,
     name: 'New Profile',
     printer_model: 'A1 Mini',
-    quality: { layer_height: 0.2, seam_position: 'aligned', wall_generator: 'arachne', precision_walls: true },
+    quality: { layer_height: 0.2, seam_position: 'aligned', wall_generator: 'arachne', ironing_type: 'no_ironing', precision_walls: true },
     strength: { wall_loops: 2, top_shell_layers: 3, bottom_shell_layers: 3, sparse_infill_density: 15, sparse_infill_pattern: 'grid' },
     speed: { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 5000 },
     support: { enable: false, type: 'tree', style: 'tree_slim', threshold_angle: 30 },
@@ -130,17 +123,18 @@ const createNewFilament = () => {
   const newF = {
     user_id: user.value.id,
     name: 'New Generic PLA',
+    print_profile_id: null,
     basic_settings: {
       filament_type: 'PLA',
-      vendor: 'Generic',
+      vendor: 'Overture',
       color: '#000000',
       diameter: 1.75,
       flow_ratio: 0.98,
-      density: 1.24,
-      shrinkage: 0.4,
-      velocity_adaptation: 0.5,
-      price: 20,
-      softening_temp: 60,
+      density: 1.22,
+      shrinkage: 100,
+      velocity_adaptation: 1,
+      price: 24.52,
+      softening_temp: 45,
       prime_vol_filament_change: 45,
       prime_vol_hotend_change: 45,
       ramming_len_extruder_change: 4.5,
@@ -224,6 +218,7 @@ const handleSaveItem = async (itemToSave) => {
   } else {
     payload = { 
       ...payload, 
+      print_profile_id: itemToSave.print_profile_id,
       basic_settings: itemToSave.basic_settings, 
       temp_settings: itemToSave.temp_settings, 
       cooling_settings: itemToSave.cooling_settings, 
@@ -328,7 +323,7 @@ const handleSaveItem = async (itemToSave) => {
               <div class="h-3 w-full border-b border-gray-100" :style="{ backgroundColor: fil.basic_settings?.color || '#ccc' }"></div>
               <div class="p-5">
                 <h3 class="font-bold text-lg text-gray-900 truncate">{{ fil.name }}</h3>
-                <div class="text-sm text-gray-500 mb-4">{{ fil.basic_settings?.brand || 'Generic' }}</div>
+                <div class="text-sm text-gray-500 mb-4">{{ fil.basic_settings?.vendor || 'Generic' }}</div>
                 <div class="grid grid-cols-2 gap-2 text-sm">
                   <div class="bg-orange-50 p-2 rounded text-center border border-orange-100">
                     <div class="text-xs text-orange-600 font-bold mb-1">Nozzle</div>
@@ -385,6 +380,7 @@ const handleSaveItem = async (itemToSave) => {
       :type="editorType"
       :isOwner="isOwner(editingItem)"
       :loading="loading"
+      :profiles="profiles"
       @close="editingItem = null"
       @save="handleSaveItem"
     />
