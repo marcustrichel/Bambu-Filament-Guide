@@ -110,11 +110,11 @@ const createNewProfile = () => {
     user_id: user.value.id,
     name: 'New Profile',
     printer_model: 'A1 Mini',
-    quality: { layer_height: 0.2, seam_position: 'aligned', wall_generator: 'arachne', ironing_type: 'no_ironing', precision_walls: true },
-    strength: { wall_loops: 2, top_shell_layers: 3, bottom_shell_layers: 3, sparse_infill_density: 15, sparse_infill_pattern: 'grid' },
+    quality: { layer_height: 0.2, first_layer_height: 0.2, outer_wall_line_width: 0.42, seam_position: 'aligned', wall_generator: 'arachne', ironing_type: 'no_ironing', precision_walls: true },
+    strength: { wall_loops: 2, top_shell_layers: 3, bottom_shell_layers: 3, sparse_infill_density: 15, sparse_infill_pattern: 'grid', top_surface_pattern: 'monotonic', bottom_surface_pattern: 'monotonic', detect_overhang_wall: true },
     speed: { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 5000 },
     support: { enable: false, type: 'tree', style: 'tree_slim', threshold_angle: 30 },
-    others: { brim_type: 'auto', brim_width: 5, skirt_loops: 0 }
+    others: { brim_type: 'auto', brim_width: 5, skirt_loops: 0, elephant_foot_compensation: 0.0 }
   };
   openEditor(newP, 'profile');
 };
@@ -143,6 +143,7 @@ const createNewFilament = () => {
       travel_time_ramming_hotend: 250,
       precool_temp_extruder: 140,
       precool_temp_hotend: 140,
+      idle_temp: 0,
     },
     temp_settings: {
       nozzle_temp_min: 190,
@@ -166,7 +167,11 @@ const createNewFilament = () => {
       max_fan_speed: 100,
       min_layer_time: 8,
       fan_always_on: true,
-      aux_fan_speed: 70
+      aux_fan_speed: 70,
+      no_cooling_for_first_layer: true,
+      slow_down_for_cooling: true,
+      slow_print_speed: 50,
+      force_cooling_for_overhangs: false,
     },
     override_settings: {
       adaptive_volumetric_speed: true,
@@ -174,14 +179,17 @@ const createNewFilament = () => {
       ramming_vol_extruder_change: 12,
       ramming_vol_hotend_change: 12,
       retraction_length: 0.8,
-      z_hop: 0.4
+      z_hop: 0.4,
+      pressure_advance: 0.02,
+      wipe_distance: 1.0,
     },
     scarf_seam: {
       scarf_seam_type: 'none',
       scarf_start_height: 0,
       scarf_slope_gap: 10,
       scarf_length: 5
-    }
+    },
+    notes: '',
   };
   openEditor(newF, 'filament');
 };
@@ -223,7 +231,8 @@ const handleSaveItem = async (itemToSave) => {
       temp_settings: itemToSave.temp_settings, 
       cooling_settings: itemToSave.cooling_settings, 
       override_settings: itemToSave.override_settings,
-      scarf_seam: itemToSave.scarf_seam
+      scarf_seam: itemToSave.scarf_seam,
+      notes: itemToSave.notes ?? ''
     };
   }
 

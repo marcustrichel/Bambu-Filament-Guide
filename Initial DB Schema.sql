@@ -60,7 +60,9 @@ create table print_profiles (
     "seam_position": "aligned",
     "wall_generator": "arachne",
     "ironing_type": "no_ironing",
-    "precision_walls": true
+    "precision_walls": true,
+    "first_layer_height": 0.2,
+    "outer_wall_line_width": 0.42
   }'::jsonb,
 
   strength jsonb not null default '{
@@ -68,7 +70,10 @@ create table print_profiles (
     "top_shell_layers": 3,
     "bottom_shell_layers": 3,
     "sparse_infill_density": 15,
-    "sparse_infill_pattern": "grid"
+    "sparse_infill_pattern": "grid",
+    "top_surface_pattern": "monotonic",
+    "bottom_surface_pattern": "monotonic",
+    "detect_overhang_wall": true
   }'::jsonb,
 
   speed jsonb not null default '{
@@ -92,7 +97,8 @@ create table print_profiles (
   others jsonb not null default '{
     "brim_type": "auto",
     "brim_width": 5,
-    "skirt_loops": 0
+    "skirt_loops": 0,
+    "elephant_foot_compensation": 0.0
   }'::jsonb,
 
   created_at  timestamptz not null default now(),
@@ -133,7 +139,8 @@ create table filaments (
     "travel_time_ramming_extruder": 250,
     "travel_time_ramming_hotend": 250,
     "precool_temp_extruder": 140,
-    "precool_temp_hotend": 140
+    "precool_temp_hotend": 140,
+    "idle_temp": 0
   }'::jsonb,
 
   -- Keys renamed from nozzle_min/nozzle_max to nozzle_temp_min/nozzle_temp_max.
@@ -161,7 +168,11 @@ create table filaments (
     "max_fan_speed": 100,
     "min_layer_time": 8,
     "fan_always_on": true,
-    "aux_fan_speed": 70
+    "aux_fan_speed": 70,
+    "no_cooling_for_first_layer": true,
+    "slow_down_for_cooling": true,
+    "slow_print_speed": 50,
+    "force_cooling_for_overhangs": false
   }'::jsonb,
 
   -- Added adaptive_volumetric_speed and ramming_vol fields; corrected max_volumetric_speed default to 12
@@ -171,7 +182,9 @@ create table filaments (
     "ramming_vol_extruder_change": 12,
     "ramming_vol_hotend_change": 12,
     "retraction_length": 0.8,
-    "z_hop": 0.4
+    "z_hop": 0.4,
+    "pressure_advance": 0.02,
+    "wipe_distance": 1.0
   }'::jsonb,
 
   scarf_seam jsonb not null default '{
@@ -180,6 +193,8 @@ create table filaments (
     "scarf_slope_gap": 10,
     "scarf_length": 5
   }'::jsonb,
+
+  notes       text not null default '',
 
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()

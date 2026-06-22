@@ -426,6 +426,80 @@ const handleClose = () => {
                 </section>
             </div>
 
+            <!-- COOLING SETTINGS TAB -->
+            <div v-else-if="activeTab === 'cooling_settings'">
+                <section>
+                    <div class="section-header"><span class="icon">🌬️</span> Part Cooling Fan</div>
+                    <template v-for="field in currentSchema.cooling_settings" :key="field.key || field.label">
+                        <div v-if="field.type !== 'heading' && field.type !== 'group'" class="row">
+                            <div class="label">{{ field.label }}</div>
+                            <div v-if="field.type === 'number'" class="input-group">
+                                <input type="number" v-model.number="editingItem.cooling_settings[field.key]" :disabled="!isOwner" :step="field.step || 1" class="small-num">
+                                <span class="unit">{{ field.suffix || '' }}</span>
+                            </div>
+                            <input v-else-if="field.type === 'boolean'" type="checkbox" v-model="editingItem.cooling_settings[field.key]" :disabled="!isOwner">
+                        </div>
+                        <p v-if="field.desc && field.type !== 'heading'" class="desc-text">{{ field.desc }}</p>
+                    </template>
+                </section>
+            </div>
+
+            <!-- SETTING OVERRIDES TAB -->
+            <div v-else-if="activeTab === 'override_settings'">
+                <section>
+                    <div class="section-header"><span class="icon">⚙️</span> Volumetric Speed</div>
+                    <template v-for="field in currentSchema.override_settings.filter(f => ['adaptive_volumetric_speed','max_volumetric_speed','ramming_vol_extruder_change','ramming_vol_hotend_change'].includes(f.key))" :key="field.key">
+                        <div class="row">
+                            <div class="label">{{ field.label }}</div>
+                            <div v-if="field.type === 'number'" class="input-group">
+                                <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 1" class="small-num">
+                                <span class="unit">{{ field.suffix || '' }}</span>
+                            </div>
+                            <input v-else-if="field.type === 'boolean'" type="checkbox" v-model="editingItem.override_settings[field.key]" :disabled="!isOwner">
+                        </div>
+                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
+                    </template>
+                </section>
+                <section>
+                    <div class="section-header"><span class="icon">🔄</span> Retraction &amp; Travel</div>
+                    <template v-for="field in currentSchema.override_settings.filter(f => ['retraction_length','z_hop','wipe_distance'].includes(f.key))" :key="field.key">
+                        <div class="row">
+                            <div class="label">{{ field.label }}</div>
+                            <div class="input-group">
+                                <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 0.1" class="small-num">
+                                <span class="unit">{{ field.suffix || '' }}</span>
+                            </div>
+                        </div>
+                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
+                    </template>
+                </section>
+                <section>
+                    <div class="section-header"><span class="icon">📈</span> Flow Dynamics</div>
+                    <template v-for="field in currentSchema.override_settings.filter(f => ['pressure_advance'].includes(f.key))" :key="field.key">
+                        <div class="row">
+                            <div class="label">{{ field.label }}</div>
+                            <div class="input-group">
+                                <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 0.001" class="small-num">
+                            </div>
+                        </div>
+                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
+                    </template>
+                </section>
+            </div>
+
+            <!-- NOTES TAB -->
+            <div v-else-if="activeTab === 'notes'">
+                <section>
+                    <div class="section-header"><span class="icon">📝</span> Notes</div>
+                    <textarea
+                        v-model="editingItem.notes"
+                        :disabled="!isOwner"
+                        placeholder="Add notes about this filament — print tips, calibration values, ideal use cases, quirks, etc."
+                        class="notes-area"
+                    ></textarea>
+                </section>
+            </div>
+
             <!-- OTHER TABS (Placeholder) -->
             <div v-else class="p-4 text-gray-500 text-center">
                 <p>Settings for {{ activeTabLabel }} are not yet implemented in this view.</p>
@@ -714,6 +788,27 @@ const handleClose = () => {
         background-color: #f0f0f0;
         color: #aaa;
     }
+
+    .desc-text {
+        font-size: 11px;
+        color: #999;
+        margin: 0 0 8px 200px;
+        line-height: 1.4;
+    }
+
+    .notes-area {
+        width: 100%;
+        min-height: 220px;
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        padding: 10px;
+        font-size: 13px;
+        font-family: var(--font-stack);
+        resize: vertical;
+        color: var(--text-main);
+    }
+
+    .notes-area:disabled { background: #f8f8f8; color: #aaa; }
 
     /* Icons (Simplified SVG/Unicode) */
     .icon { width: 16px; text-align: center; }

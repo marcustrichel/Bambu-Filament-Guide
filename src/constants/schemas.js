@@ -4,14 +4,19 @@ export const profileSchema = {
         { key: 'seam_position', label: 'Seam Position', type: 'select', options: ['aligned', 'back', 'random', 'nearest'], default: 'aligned', desc: "Controls where each layer's start/end point is located. 'Aligned' creates a single seam, 'Back' hides it on the rear, 'Nearest' places it in a corner, and 'Random' distributes it across the surface." },
         { key: 'wall_generator', label: 'Wall Generator', type: 'select', options: ['classic', 'arachne'], default: 'arachne', desc: "'Arachne' (default) uses a variable extrusion width, ideal for thin walls and sharp corners. 'Classic' uses a fixed width." },
         { key: 'ironing_type', label: 'Ironing', type: 'select', options: ['no_ironing', 'top_surfaces', 'all_top'], default: 'no_ironing', desc: "Smooths top surfaces by making an extra pass with minimal filament flow. 'Top Surfaces' irons all flat top areas." },
-        { key: 'precision_walls', label: 'Precision Walls', type: 'boolean', default: true, desc: "Intended to improve dimensional accuracy and reduce Z-banding by adjusting the wall generation algorithm." }
+        { key: 'precision_walls', label: 'Precision Walls', type: 'boolean', default: true, desc: "Intended to improve dimensional accuracy and reduce Z-banding by adjusting the wall generation algorithm." },
+        { key: 'first_layer_height', label: 'First Layer Height', type: 'number', step: 0.05, suffix: 'mm', default: 0.2, desc: "Height of the first layer. A slightly thicker first layer (0.2–0.3mm) improves bed adhesion regardless of the main layer height setting. Default: 0.2mm." },
+        { key: 'outer_wall_line_width', label: 'Outer Wall Line Width', type: 'number', step: 0.01, suffix: 'mm', default: 0.42, desc: "Width of the extruded outer wall line. Slightly wider than the nozzle (e.g., 0.42mm for a 0.4mm nozzle) creates tighter, stronger walls. Default: 0.42mm." }
     ],
     strength: [
         { key: 'wall_loops', label: 'Wall Loops', type: 'number', step: 1, default: 2, desc: "The number of perimeter walls. More walls increase strength but also print time and material usage. Default is 2." },
         { key: 'top_shell_layers', label: 'Top Shell Layers', type: 'number', step: 1, default: 3, desc: "Number of solid layers on the top of the model. More layers improve surface finish and strength. Default: 3-5." },
         { key: 'bottom_shell_layers', label: 'Bottom Shell Layers', type: 'number', step: 1, default: 3, desc: "Number of solid layers at the bottom of the model. More layers improve adhesion and strength. Default: 3-5." },
         { key: 'sparse_infill_density', label: 'Infill Density', type: 'number', suffix: '%', default: 15, desc: "The density of the internal support structure. Higher values increase strength and weight. Common values are 15-25%. Default: 15%." },
-        { key: 'sparse_infill_pattern', label: 'Infill Pattern', type: 'select', options: ['grid', 'gyroid', 'rectilinear', 'honeycomb'], default: 'grid', desc: "Pattern of the internal infill. 'Grid' is fast, 'Gyroid' is strong in all directions, 'Honeycomb' is strong and light." }
+        { key: 'sparse_infill_pattern', label: 'Infill Pattern', type: 'select', options: ['grid', 'gyroid', 'rectilinear', 'honeycomb'], default: 'grid', desc: "Pattern of the internal infill. 'Grid' is fast, 'Gyroid' is strong in all directions, 'Honeycomb' is strong and light." },
+        { key: 'top_surface_pattern', label: 'Top Surface Pattern', type: 'select', options: ['monotonic', 'monotonic_line', 'concentric', 'rectilinear', 'aligned_rectilinear', 'grid', 'zig_zag'], default: 'monotonic', desc: "'Monotonic' produces the smoothest visible top surface by printing lines in a consistent direction with no crossings. Default: monotonic." },
+        { key: 'bottom_surface_pattern', label: 'Bottom Surface Pattern', type: 'select', options: ['monotonic', 'monotonic_line', 'concentric', 'rectilinear', 'aligned_rectilinear', 'grid', 'zig_zag'], default: 'monotonic', desc: "Fill pattern for the bottom layer surface. 'Monotonic' is recommended for the smoothest result. Default: monotonic." },
+        { key: 'detect_overhang_wall', label: 'Detect Overhang Walls', type: 'boolean', default: true, desc: "Identifies overhanging walls and reduces print speed and/or increases fan to improve their quality. Recommended to keep enabled." }
     ],
     speed: [
         { key: 'outer_wall', label: 'Outer Wall', type: 'number', suffix: 'mm/s', default: 200, desc: "Speed for printing the outermost wall. Slower speeds improve surface quality. Default: 200 mm/s." },
@@ -32,7 +37,8 @@ export const profileSchema = {
     others: [
         { key: 'brim_type', label: 'Brim Type', type: 'select', options: ['auto', 'outer_only', 'inner_only', 'no_brim'], default: 'auto', desc: "A brim adds a single-layer flat area around your model's base to improve bed adhesion. 'Auto' enables it only when needed." },
         { key: 'brim_width', label: 'Brim Width', type: 'number', suffix: 'mm', default: 5, desc: "The width of the brim. A wider brim provides more adhesion. Default: 5mm." },
-        { key: 'skirt_loops', label: 'Skirt Loops', type: 'number', default: 0, desc: "A skirt is an outline printed around the model before the model itself, used to prime the nozzle. This sets the number of loops. Default: 1." }
+        { key: 'skirt_loops', label: 'Skirt Loops', type: 'number', default: 0, desc: "A skirt is an outline printed around the model before the model itself, used to prime the nozzle. This sets the number of loops. Default: 1." },
+        { key: 'elephant_foot_compensation', label: 'Elephant Foot Compensation', type: 'number', step: 0.01, suffix: 'mm', default: 0.0, desc: "Reduces the first layer perimeter width to counteract the squishing effect on the bed, improving dimensional accuracy at the base. Default: 0mm (disabled)." }
     ]
 };
 
@@ -81,6 +87,7 @@ export const filamentSchema = {
                 { key: 'precool_temp_hotend', label: 'Hotend', type: 'number', suffix: '°C', width: 'w-32', default: 140, desc: "The target temperature to pre-cool to during a hotend change." },
             ]
         },
+        { key: 'idle_temp', label: 'Idle Temperature (AMS)', type: 'number', suffix: '°C', default: 0, desc: "Temperature the nozzle drops to when waiting in the AMS between prints or color changes. A lower value reduces oozing. 0 uses the printer default. Typical PLA: 0°C (off)." },
         {
             type: 'group',
             label: 'Recommended nozzle temperature',
@@ -148,7 +155,11 @@ export const filamentSchema = {
         { key: 'max_fan_speed', label: 'Max Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 100, desc: "The maximum speed of the part cooling fan." },
         { key: 'min_layer_time', label: 'Min Layer Time', type: 'number', suffix: 's', width: 'w-32', default: 8, desc: "If a layer prints faster than this time, the print speed will be slowed down to ensure adequate cooling." },
         { key: 'fan_always_on', label: 'Fan Always On', type: 'boolean', width: 'w-full', default: true, desc: "Keeps the part cooling fan running at all times, even on the first layer." },
-        { key: 'aux_fan_speed', label: 'Aux Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 70, desc: "The speed of the auxiliary part cooling fan, if available." }
+        { key: 'aux_fan_speed', label: 'Aux Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 70, desc: "The speed of the auxiliary part cooling fan, if available." },
+        { key: 'no_cooling_for_first_layer', label: 'No Fan on First Layer', type: 'boolean', width: 'w-full', default: true, desc: "Disables the part cooling fan during the first layer to improve bed adhesion. Strongly recommended for all materials." },
+        { key: 'slow_down_for_cooling', label: 'Slow Down for Cooling', type: 'boolean', width: 'w-full', default: true, desc: "If a layer finishes faster than Min Layer Time, the print speed is automatically reduced to allow adequate cooling. Essential for small parts." },
+        { key: 'slow_print_speed', label: 'Slow Print Speed', type: 'number', suffix: 'mm/s', step: 1, width: 'w-32', default: 50, desc: "The minimum speed the printer will drop to when slowing for cooling. Will not go below this value. Default: 50 mm/s." },
+        { key: 'force_cooling_for_overhangs', label: 'Force Fan for Overhangs', type: 'boolean', width: 'w-full', default: false, desc: "Temporarily increases the fan to maximum speed when printing overhangs, improving overhang quality for materials prone to sagging." }
     ],
     override_settings: [
         { type: 'heading', label: 'Volumetric Speed Limitation' },
@@ -157,7 +168,9 @@ export const filamentSchema = {
         { key: 'ramming_vol_extruder_change', label: 'Ramming Vol (Extruder Change)', type: 'number', suffix: 'mm³/s', width: 'w-32', default: 12, desc: "The volumetric speed used during the ramming phase of a filament change." },
         { key: 'ramming_vol_hotend_change', label: 'Ramming Vol (Hotend Change)', type: 'number', suffix: 'mm³/s', width: 'w-32', default: 12, desc: "The volumetric speed used during ramming when the hotend is changed." },
         { key: 'retraction_length', label: 'Retraction', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.8, desc: "The amount of filament to pull back when the print head travels over an empty space, to prevent stringing. Default is around 0.8mm." },
-        { key: 'z_hop', label: 'Z-Hop', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.4, desc: "Lifts the print head by this amount during travel moves to avoid hitting the printed part. Default is around 0.4mm." }
+        { key: 'z_hop', label: 'Z-Hop', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.4, desc: "Lifts the print head by this amount during travel moves to avoid hitting the printed part. Default is around 0.4mm." },
+        { key: 'pressure_advance', label: 'Pressure Advance (K)', type: 'number', step: 0.001, width: 'w-32', default: 0.02, desc: "Bambu's Flow Dynamics Calibration K-value. Compensates for pressure buildup in the nozzle, reducing blobs at corners and improving accuracy. Typical PLA: 0.01–0.04. Run the built-in calibration for best results." },
+        { key: 'wipe_distance', label: 'Wipe Distance', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 1.0, desc: "Distance the nozzle wipes along the last printed wall during retraction. Reduces stringing and oozing at travel start/end points. Default: 1.0mm." }
     ],
     scarf_seam: [
         { type: 'heading', label: 'Filament Scarf Seam Settings' },
