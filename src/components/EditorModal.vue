@@ -24,7 +24,7 @@ watch(() => props.item, (newItem) => {
     originalItemStr.value = str;
     editingItem.value = JSON.parse(str);
     // Set default tab
-    activeTab.value = props.type === 'profile' ? 'quality' : 'basic_settings';
+    activeTab.value = props.type === 'profile' ? 'quality' : 'filament_tab';
   }
 }, { immediate: true });
 
@@ -71,7 +71,7 @@ const handleClose = () => {
 </script>
 
 <template>
-  <div v-if="editingItem" @click.self="handleClose" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
+  <div v-if="editingItem && type === 'profile'" @click.self="handleClose" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden transform transition-all">
       
       <!-- Header -->
