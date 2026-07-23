@@ -1,3 +1,17 @@
+export const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E'];
+
+// Speed-tab defaults per printer model. Other tabs (quality, strength, support,
+// others) aren't printer-dependent, so only speed varies by target model.
+export const PRINTER_MODEL_SPEED_DEFAULTS = {
+    'A1 Mini':   { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 5000 },
+    'A1':        { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 8000 },
+    'P1P':       { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 8000 },
+    'P1S':       { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 8000 },
+    'X1':        { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 10000 },
+    'X1 Carbon': { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 10000 },
+    'X1E':       { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 10000 },
+};
+
 export const profileSchema = {
     quality: [
         { key: 'layer_height', label: 'Layer Height', type: 'number', step: 0.04, suffix: 'mm', default: 0.2, desc: "Thickness of each layer. Lower values increase detail but also print time. A common default is 0.2mm." },

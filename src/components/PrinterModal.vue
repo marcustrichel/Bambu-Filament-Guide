@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
+import { PRINTER_MODELS } from '@/constants/schemas';
 
 const props = defineProps({
   printer: Object,   // The printer being edited (or a fresh one for create)
@@ -8,8 +9,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'save']);
-
-const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E'];
 
 const editingPrinter = ref(null);
 const originalPrinterStr = ref('');

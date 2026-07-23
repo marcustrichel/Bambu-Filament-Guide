@@ -49,9 +49,40 @@ describe('EditorModal — profile type', () => {
     expect(wrapper.find('input[placeholder="Enter Name..."]').exists()).toBe(true)
   })
 
-  it('shows the target printer model', () => {
+  it('shows the target printer model as the selected option in a dropdown', () => {
     const wrapper = mountProfile()
-    expect(wrapper.text()).toContain('A1 Mini')
+    const select = wrapper.find('select')
+    expect(select.exists()).toBe(true)
+    expect(select.element.value).toBe('A1 Mini')
+  })
+
+  it('disables the target printer dropdown when isOwner is false', () => {
+    const wrapper = mountProfile({ isOwner: false })
+    expect(wrapper.find('select').attributes('disabled')).toBeDefined()
+  })
+
+  it('disables the target printer dropdown when editing an existing profile, even as owner', () => {
+    const wrapper = mountProfile() // profileItem already has an id
+    expect(wrapper.find('select').attributes('disabled')).toBeDefined()
+  })
+
+  it('leaves the target printer dropdown enabled when creating a new profile', () => {
+    const wrapper = mountProfile({ item: { ...profileItem, id: undefined } })
+    expect(wrapper.find('select').attributes('disabled')).toBeUndefined()
+  })
+
+  it('changing the target printer resets speed settings to that model\'s defaults (new profile only)', async () => {
+    const wrapper = mountProfile({ item: { ...profileItem, id: undefined } })
+    const select = wrapper.find('select')
+    await select.setValue('X1 Carbon')
+
+    const speedTab = wrapper.findAll('button').find(b => b.text().trim() === 'Speed')
+    await speedTab.trigger('click')
+    const accelInput = wrapper.findAll('input[type="number"]').find((input) => {
+      const label = input.element.closest('.group')?.querySelector('label')?.textContent
+      return label?.includes('Acceleration')
+    })
+    expect(accelInput.element.value).toBe('10000')
   })
 
   it('shows all 5 profile tabs', () => {

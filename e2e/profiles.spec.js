@@ -48,3 +48,15 @@ test('signs in and creates a new print profile', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'My New Profile' }).or(page.getByText('My New Profile'))).toBeVisible();
 });
+
+test('changing the target printer updates the speed defaults', async ({ page }) => {
+  await mockSupabase(page, { profiles: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: 'New Profile' }).click();
+  await page.getByRole('combobox', { name: 'Target Printer' }).selectOption('X1 Carbon');
+  await page.getByRole('button', { name: 'Speed' }).click();
+
+  await expect(page.getByText('Acceleration').locator('..').getByRole('spinbutton')).toHaveValue('10000');
+});

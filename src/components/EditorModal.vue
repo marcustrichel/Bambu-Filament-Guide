@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { profileSchema, filamentSchema } from '@/constants/schemas';
+import { profileSchema, filamentSchema, PRINTER_MODELS, PRINTER_MODEL_SPEED_DEFAULTS } from '@/constants/schemas';
 
 const props = defineProps({
   item: Object,      // The profile or filament object being edited
@@ -58,6 +58,11 @@ const activeTabLabel = computed(() => {
   return t ? t.label : '';
 });
 
+const handleModelChange = () => {
+  const defaults = PRINTER_MODEL_SPEED_DEFAULTS[editingItem.value.printer_model];
+  if (defaults) editingItem.value.speed = { ...defaults };
+};
+
 const handleSave = () => {
   emit('save', editingItem.value);
 };
@@ -90,7 +95,16 @@ const handleClose = () => {
             <!-- Printer Selector (Profile Only) -->
             <div class="flex items-center gap-2 bg-white px-2 py-1 rounded border border-gray-200">
                <label class="text-xs text-gray-500 font-bold uppercase">Target:</label>
-               <span class="text-sm font-bold text-gray-800">{{ editingItem.printer_model }}</span>
+               <select
+                 v-model="editingItem.printer_model"
+                 @change="handleModelChange"
+                 :disabled="!isOwner || !!editingItem.id"
+                 :title="editingItem.id ? 'Target printer can only be set when creating a new profile' : ''"
+                 aria-label="Target Printer"
+                 class="text-sm font-bold text-gray-800 bg-transparent outline-none cursor-pointer disabled:cursor-not-allowed"
+               >
+                 <option v-for="m in PRINTER_MODELS" :key="m" :value="m">{{ m }}</option>
+               </select>
             </div>
           </div>
         </div>

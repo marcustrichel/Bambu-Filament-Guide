@@ -92,11 +92,12 @@ The application relies on a relational database with JSONB columns for flexible 
     *   If Owner: Opens in Edit mode.
     *   If Not Owner: Opens in Read-Only mode.
 2.  **Edit:** `EditorModal` renders fields dynamically based on `schemas.js`.
-3.  **Validation:** Inputs enforce types (number, color) and constraints (min values).
-4.  **Save:**
+3.  **Target Printer:** The profile editor's "Target" field is a dropdown of printer models (`PRINTER_MODELS` in `schemas.js`), not free text. Changing it resets the **Speed** tab's fields to that model's built-in defaults (`PRINTER_MODEL_SPEED_DEFAULTS`) — e.g. X1 Carbon defaults to 10000 mm/s² acceleration vs. 5000 for A1 Mini. Other tabs (quality, strength, support, others) aren't model-dependent and are left untouched.
+4.  **Validation:** Inputs enforce types (number, color) and constraints (min values).
+5.  **Save:**
     *   New Item: `INSERT` into DB.
     *   Existing Item: `UPDATE` row in DB.
-5.  **Unsaved Changes:** Closing the modal with modified data triggers a confirmation prompt.
+6.  **Unsaved Changes:** Closing the modal with modified data triggers a confirmation prompt.
 
 ### 4.4 Forking (Cloning)
 1.  User clicks "Fork" on a community profile.

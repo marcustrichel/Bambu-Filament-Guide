@@ -46,12 +46,13 @@ Every profile shows its name, owner ("My Profile" or "Community"), target printe
 ### Creating a Profile
 
 1. While signed in, click **+ New Profile** above the profile grid.
-2. Give it a name and adjust settings across the five tabs: **Quality**, **Strength**, **Speed**, **Support**, **Others**. Hover over a field for a description of what it does.
-3. Click **Save Changes**.
+2. Give it a name and pick a **Target** printer model from the dropdown next to it. Changing this updates the **Speed** tab to that model's recommended defaults (e.g. faster acceleration for X1 Carbon than A1 Mini) — the other tabs are unaffected.
+3. Adjust settings across the five tabs: **Quality**, **Strength**, **Speed**, **Support**, **Others**. Hover over a field for a description of what it does.
+4. Click **Save Changes**.
 
 ### Editing
 
-Open one of your own profiles and change any field, then **Save Changes**. If you close the editor with unsaved changes, you'll be asked to confirm before they're discarded.
+Open one of your own profiles and change any field, then **Save Changes**. Changing the **Target** model resets the Speed tab to that model's defaults, so re-check your speed settings after switching targets. If you close the editor with unsaved changes, you'll be asked to confirm before they're discarded.
 
 ### Forking (Copying) a Community Profile
 
