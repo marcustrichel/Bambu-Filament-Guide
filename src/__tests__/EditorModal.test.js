@@ -199,16 +199,22 @@ describe('EditorModal — filament type', () => {
     })
   })
 
-  it('emits "save" when toolbar save icon is clicked', async () => {
+  it('emits "save" when the footer Save Changes button is clicked', async () => {
     const wrapper = mountFilament()
-    await wrapper.find('.toolbar-icon[title="Save"]').trigger('click')
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
     expect(wrapper.emitted('save')).toBeTruthy()
   })
 
-  it('emits "close" when the red dot-close button is clicked', async () => {
+  it('emits "close" when the header close button is clicked', async () => {
     const wrapper = mountFilament()
-    await wrapper.find('.dot-close').trigger('click')
+    await wrapper.find('.close-btn').trigger('click')
     expect(wrapper.emitted('close')).toBeTruthy()
+  })
+
+  it('hides the Save Changes button when isOwner is false', () => {
+    const wrapper = mountFilament({ isOwner: false })
+    expect(wrapper.findAll('button').find(b => b.text().includes('Save Changes'))).toBeUndefined()
   })
 
   it('Filament tab (default) shows basic information section', () => {
@@ -245,7 +251,7 @@ describe('EditorModal — filament type', () => {
     const linkSelect = wrapper.find('select')
     expect(linkSelect.exists()).toBe(true)
     await linkSelect.setValue('profile-2')
-    const saveBtn = wrapper.find('.toolbar-icon[title="Save"]')
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
     await saveBtn.trigger('click')
     expect(wrapper.emitted('save')[0][0]).toMatchObject({ print_profile_id: 'profile-2' })
   })

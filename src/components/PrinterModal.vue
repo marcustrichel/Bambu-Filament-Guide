@@ -18,6 +18,8 @@ watch(() => props.printer, (newPrinter) => {
     const str = JSON.stringify(newPrinter);
     originalPrinterStr.value = str;
     editingPrinter.value = JSON.parse(str);
+  } else {
+    editingPrinter.value = null;
   }
 }, { immediate: true });
 
@@ -35,13 +37,13 @@ const handleClose = () => {
 
 <template>
   <div v-if="editingPrinter" @click.self="handleClose" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-      <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 flex-shrink-0">
         <h3 class="text-lg font-bold text-gray-900">{{ editingPrinter.id ? 'Edit Printer' : 'New Printer' }}</h3>
         <button @click="handleClose" class="text-gray-400 hover:text-gray-600 p-1">✕</button>
       </div>
 
-      <div class="p-6 space-y-4">
+      <div class="p-6 space-y-4 flex-1 overflow-y-auto">
         <div>
           <label for="printer-name" class="block text-xs font-bold text-gray-500 uppercase mb-1">Name</label>
           <input
@@ -109,7 +111,7 @@ const handleClose = () => {
         </div>
       </div>
 
-      <div class="p-4 border-t border-gray-200 bg-white flex justify-end gap-3">
+      <div class="p-4 border-t border-gray-200 bg-white flex justify-end gap-3 flex-shrink-0">
         <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
           Cancel
         </button>

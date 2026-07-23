@@ -26,6 +26,8 @@ watch(() => props.item, (newItem) => {
     editingItem.value = JSON.parse(str);
     // Set default tab
     activeTab.value = props.type === 'profile' ? 'quality' : 'filament_tab';
+  } else {
+    editingItem.value = null;
   }
 }, { immediate: true });
 
@@ -230,11 +232,7 @@ const handleClose = () => {
         <!-- Header Area -->
         <div class="title-bar">
             <span class="title-text">Filament settings</span>
-            <div class="window-controls">
-                <div class="control-dot dot-min"></div>
-                <div class="control-dot dot-max"></div>
-                <div class="control-dot dot-close" @click="handleClose"></div>
-            </div>
+            <button @click="handleClose" class="close-btn" aria-label="Close">✕</button>
         </div>
 
         <div class="toolbar">
@@ -249,7 +247,6 @@ const handleClose = () => {
                     <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
             </div>
-            <span class="toolbar-icon" @click="handleSave" title="Save">💾</span>
             <span class="toolbar-icon">🔍</span>
             <div class="advanced-toggle">
                 <span>Advanced</span>
@@ -519,6 +516,22 @@ const handleClose = () => {
             </div>
 
         </div>
+
+        <!-- Footer (same controls as the profile editor) -->
+        <div class="p-4 border-t border-gray-200 bg-white flex justify-end gap-3">
+          <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+            Cancel
+          </button>
+          <button
+            v-if="isOwner"
+            @click="handleSave"
+            class="px-6 py-2 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 shadow-sm flex items-center transition-colors"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="animate-spin mr-2">⟳</span>
+            Save Changes
+          </button>
+        </div>
     </div>
   </div>
 </template>
@@ -560,7 +573,7 @@ const handleClose = () => {
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        max-height: 90vh; /* Keep this to ensure it fits in modal */
+        height: 90vh; /* fixed, not max — so switching tabs never resizes the window */
     }
 
     /* Title Bar */
@@ -579,19 +592,16 @@ const handleClose = () => {
         color: var(--text-muted);
     }
 
-    .window-controls {
-        display: flex;
-        gap: 8px;
+    .close-btn {
+        background: none;
+        border: none;
+        color: #999;
+        cursor: pointer;
+        font-size: 14px;
+        line-height: 1;
+        padding: 4px;
     }
-
-    .control-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-    }
-    .dot-close { background: #ff5f56; cursor: pointer; }
-    .dot-min { background: #ffbd2e; }
-    .dot-max { background: #27c93f; }
+    .close-btn:hover { color: #333; }
 
     /* Navigation / Toolbar */
     .toolbar {
@@ -685,10 +695,11 @@ const handleClose = () => {
         gap: 4px;
     }
 
-    /* Scrollable Content */
+    /* Scrollable Content — vertical only, never horizontal */
     .scroll-container {
         flex-grow: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding: 16px;
         background: white;
     }
@@ -825,4 +836,23 @@ const handleClose = () => {
 
     /* Icons (Simplified SVG/Unicode) */
     .icon { width: 16px; text-align: center; }
+
+    /* Narrow viewports: stack label above field and let paired inputs wrap,
+       instead of forcing a minimum row width wider than the screen. */
+    @media (max-width: 640px) {
+        .row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            min-height: 0;
+        }
+        .label { width: 100%; }
+        .input-group { width: 100%; }
+        .temp-pair, .dual-inputs { flex-wrap: wrap; row-gap: 8px; }
+        .desc-text { margin-left: 0; }
+
+        .toolbar { flex-wrap: wrap; }
+        .dropdown-container { flex-basis: 100%; }
+        .toolbar-icon, .advanced-toggle { display: none; } /* decorative only, not worth the space on small screens */
+    }
 </style>

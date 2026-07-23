@@ -186,8 +186,8 @@ describe('App.vue — filament CRUD', () => {
 
     const newBtn = wrapper.findAll('button').find((b) => b.text().includes('New Filament'))
     await newBtn.trigger('click')
-    const saveIcon = wrapper.find('.toolbar-icon[title="Save"]')
-    await saveIcon.trigger('click')
+    const saveBtn = wrapper.findAll('button').find((b) => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
     await flushPromises()
 
     expect(supabase.__chains.filaments.insert).toHaveBeenCalledWith(
@@ -314,6 +314,29 @@ describe('App.vue — printer CRUD', () => {
       expect.objectContaining({ user_id: mockUser.id, name: 'New Printer', model: 'A1 Mini' })
     )
     expect(wrapper.text()).toContain('New Printer')
+  })
+
+  it('actually closes when the header close button is clicked, and reopens correctly with different data', async () => {
+    const printerA = { id: 'printer-a', name: 'Printer A', model: 'A1 Mini', nozzle_diameter: 0.4, bed_size_x: 180, bed_size_y: 180, default_print_profile_id: null }
+    const printerB = { id: 'printer-b', name: 'Printer B', model: 'X1 Carbon', nozzle_diameter: 0.4, bed_size_x: 256, bed_size_y: 256, default_print_profile_id: null }
+    supabase.__chains.printers._result = { data: [printerA, printerB], error: null }
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Printers')
+
+    const rowA = wrapper.findAll('tbody tr').find((r) => r.text().includes('Printer A'))
+    await rowA.trigger('click')
+    let modal = wrapper.findComponent({ name: 'PrinterModal' })
+    expect(modal.find('#printer-name').exists()).toBe(true)
+
+    const closeBtn = modal.findAll('button').find((b) => b.text().trim() === '✕')
+    await closeBtn.trigger('click')
+    modal = wrapper.findComponent({ name: 'PrinterModal' })
+    expect(modal.find('#printer-name').exists()).toBe(false)
+
+    const rowB = wrapper.findAll('tbody tr').find((r) => r.text().includes('Printer B'))
+    await rowB.trigger('click')
+    modal = wrapper.findComponent({ name: 'PrinterModal' })
+    expect(modal.find('#printer-name').element.value).toBe('Printer B')
   })
 
   it('changes a printer\'s default print profile via update', async () => {
@@ -448,6 +471,21 @@ describe('App.vue — access levels', () => {
     await goToView(wrapper, 'Users')
     const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-elevated@example.com'))
     expect(row.findAll('button')).toHaveLength(0)
+  })
+
+  it('actually closes when the header close button is clicked, and reopens correctly with a different user', async () => {
+    const wrapper = await mountSignedInAs('elevated', {}, [otherStandard(), otherElevated()])
+    await goToView(wrapper, 'Users')
+
+    const rowStandard = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-standard@example.com'))
+    await rowStandard.find('button').trigger('click')
+    let modal = wrapper.findComponent({ name: 'UserEditModal' })
+    expect(modal.find('#user-full-name').exists()).toBe(true)
+
+    const closeBtn = modal.findAll('button').find((b) => b.text().trim() === '✕')
+    await closeBtn.trigger('click')
+    modal = wrapper.findComponent({ name: 'UserEditModal' })
+    expect(modal.find('#user-full-name').exists()).toBe(false)
   })
 
   it('lets an elevated user edit a standard user\'s name/phone/disabled but locks the role select', async () => {
