@@ -29,16 +29,18 @@ const filamentItem = {
   notes: '',
 }
 
+const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E']
+
 // --- Helpers ---
 
 const mountProfile = (overrides = {}) =>
   mount(EditorModal, {
-    props: { item: profileItem, type: 'profile', isOwner: true, loading: false, profiles: [], ...overrides },
+    props: { item: profileItem, type: 'profile', isOwner: true, loading: false, profiles: [], printerModels: PRINTER_MODELS, ...overrides },
   })
 
 const mountFilament = (overrides = {}) =>
   mount(EditorModal, {
-    props: { item: filamentItem, type: 'filament', isOwner: true, loading: false, profiles: [], ...overrides },
+    props: { item: filamentItem, type: 'filament', isOwner: true, loading: false, profiles: [], printerModels: PRINTER_MODELS, ...overrides },
   })
 
 // --- Profile editor ---

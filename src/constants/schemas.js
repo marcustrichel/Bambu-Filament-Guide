@@ -1,5 +1,3 @@
-export const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E'];
-
 // Speed-tab defaults per printer model. Other tabs (quality, strength, support,
 // others) aren't printer-dependent, so only speed varies by target model.
 export const PRINTER_MODEL_SPEED_DEFAULTS = {

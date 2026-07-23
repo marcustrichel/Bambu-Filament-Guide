@@ -50,7 +50,10 @@ test('signs in and creates a new print profile', async ({ page }) => {
 });
 
 test('changing the target printer updates the speed defaults', async ({ page }) => {
-  await mockSupabase(page, { profiles: [] });
+  await mockSupabase(page, {
+    profiles: [],
+    printerModels: [{ id: 'model-a', name: 'A1 Mini' }, { id: 'model-b', name: 'X1 Carbon' }],
+  });
   await page.goto('/');
   await signIn(page);
 

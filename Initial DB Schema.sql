@@ -5,7 +5,15 @@ drop table if exists favorites cascade;
 drop table if exists filaments cascade;
 drop table if exists print_profiles cascade;
 drop table if exists printers cascade;
+drop table if exists printer_models cascade;
+drop table if exists user_profiles cascade;
 drop function if exists update_updated_at_column cascade;
+drop function if exists printer_model_usage cascade;
+drop function if exists handle_new_auth_user cascade;
+drop function if exists sync_user_profile_email cascade;
+drop function if exists get_my_role cascade;
+drop function if exists current_user_disabled cascade;
+drop function if exists enforce_user_profile_update_permissions cascade;
 
 -- =================================================================
 -- 2. UTILITY FUNCTIONS
@@ -23,6 +31,133 @@ $$ language plpgsql;
 -- =================================================================
 -- 3. CREATE TABLES
 -- =================================================================
+
+-- USER PROFILES (app-level account data + access role, one row per auth.users
+-- row). Named "user_profiles" rather than Supabase's usual "profiles" because
+-- this app already uses "profiles" to mean print profiles everywhere else.
+create table user_profiles (
+  id         uuid primary key references auth.users (id) on delete cascade,
+  email      text not null,
+  full_name  text,
+  phone      text,
+  role       text not null default 'standard' check (role in ('standard', 'elevated', 'admin')),
+  disabled   boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create trigger user_profiles_updated_at
+  before update on user_profiles
+  for each row execute function update_updated_at_column();
+
+create index idx_user_profiles_role on user_profiles (role);
+
+-- Auto-create a user_profiles row whenever a new auth user signs up.
+create or replace function handle_new_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_profiles (id, email)
+  values (new.id, new.email)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function handle_new_auth_user();
+
+-- Keep user_profiles.email in sync with auth.users.email (self-service email
+-- changes or the admin Edge Function both update auth.users directly).
+create or replace function sync_user_profile_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.user_profiles set email = new.email where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_email_updated
+  after update of email on auth.users
+  for each row execute function sync_user_profile_email();
+
+-- Helpers used both in RLS policies here and on other tables, so a policy
+-- never has to re-derive "who am I and am I disabled" from scratch.
+create or replace function get_my_role()
+returns text
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select role from user_profiles where id = auth.uid();
+$$;
+
+create or replace function current_user_disabled()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce((select disabled from user_profiles where id = auth.uid()), false);
+$$;
+
+grant execute on function get_my_role() to authenticated;
+grant execute on function current_user_disabled() to authenticated, anon;
+
+-- Fine-grained update rules that plain row-level RLS can't express on its own:
+--   - nobody may change their own role or disabled status
+--   - editing someone else requires elevated or admin
+--   - elevated may only touch users who are currently "standard", and can
+--     never change a role (elevation/demotion is admin-only)
+create or replace function enforce_user_profile_update_permissions()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  caller_role text := get_my_role();
+begin
+  if auth.uid() = old.id then
+    if new.role is distinct from old.role or new.disabled is distinct from old.disabled then
+      raise exception 'You cannot change your own role or enabled status.';
+    end if;
+    return new;
+  end if;
+
+  if caller_role not in ('elevated', 'admin') then
+    raise exception 'Insufficient permissions to edit other users.';
+  end if;
+
+  if caller_role = 'elevated' then
+    if old.role <> 'standard' then
+      raise exception 'Elevated users can only manage standard users.';
+    end if;
+    if new.role is distinct from old.role then
+      raise exception 'Only admins can change a user''s role.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger user_profiles_enforce_update_permissions
+  before update on user_profiles
+  for each row execute function enforce_user_profile_update_permissions();
+
 
 -- PRINTERS (User's physical hardware — private, not shared)
 create table printers (
@@ -48,7 +183,9 @@ create index idx_printers_user_id on printers (user_id);
 
 -- PRINT PROFILES (Slicer settings — public read, owner write)
 -- Must be created before filaments because filaments.print_profile_id references it.
--- printer_model is intentionally denormalized text (targets a model class, not a printer instance).
+-- printer_model targets a model class (not a printer instance) — FK added below,
+-- once printer_models exists, referencing its unique `name` column rather than id
+-- so this stays a plain, human-readable text column.
 create table print_profiles (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users on delete cascade,
@@ -117,6 +254,47 @@ create index idx_print_profiles_printer_model on print_profiles (printer_model);
 alter table printers add column default_print_profile_id uuid references print_profiles (id) on delete set null;
 
 create index idx_printers_default_print_profile_id on printers (default_print_profile_id);
+
+
+-- PRINTER MODELS (Shared, community-editable list of target printer models —
+-- public read, any signed-in user may insert/delete. printers.model and
+-- print_profiles.printer_model are real foreign keys into this table's `name`
+-- column below, so a model can't be deleted while anything still uses it, and
+-- a rename (if ever added) would cascade to every row referencing it.)
+create table printer_models (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null unique,
+  created_at timestamptz not null default now()
+);
+
+-- Both existing tables predate this one, so the FKs are added here rather than
+-- inline on their original `create table` statements.
+alter table printers
+  add constraint printers_model_fkey foreign key (model)
+  references printer_models (name) on update cascade on delete restrict;
+
+alter table print_profiles
+  add constraint print_profiles_printer_model_fkey foreign key (printer_model)
+  references printer_models (name) on update cascade on delete restrict;
+
+-- Reports whether each printer model is still referenced by any printer or print
+-- profile, across ALL users (security definer bypasses the owner-only RLS on
+-- printers), so the UI can warn *before* a delete would be rejected by the FK
+-- constraints above — without exposing which printers or whose they are.
+create or replace function printer_model_usage()
+returns table(name text, in_use boolean)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    pm.name,
+    exists (select 1 from printers p where p.model = pm.name)
+    or exists (select 1 from print_profiles pp where pp.printer_model = pm.name) as in_use
+  from printer_models pm;
+$$;
+
+grant execute on function printer_model_usage() to anon, authenticated;
 
 
 -- FILAMENTS (Material/chemistry settings — public read, owner write)
@@ -241,32 +419,68 @@ alter table printers       enable row level security;
 alter table print_profiles enable row level security;
 alter table filaments      enable row level security;
 alter table favorites      enable row level security;
+alter table printer_models enable row level security;
+alter table user_profiles  enable row level security;
 
--- PRINTERS: visible and writable by owner only
+-- PRINTERS: visible and writable by owner only. Reads stay available to a
+-- disabled account (see USER PROFILES below); only writes are blocked.
 create policy "printers_select_own" on printers for select using (auth.uid() = user_id);
-create policy "printers_insert_own" on printers for insert with check (auth.uid() = user_id);
-create policy "printers_update_own" on printers for update using (auth.uid() = user_id);
-create policy "printers_delete_own" on printers for delete using (auth.uid() = user_id);
+create policy "printers_insert_own" on printers for insert with check (auth.uid() = user_id and not current_user_disabled());
+create policy "printers_update_own" on printers for update using (auth.uid() = user_id and not current_user_disabled());
+create policy "printers_delete_own" on printers for delete using (auth.uid() = user_id and not current_user_disabled());
 
 -- PRINT PROFILES: public read; insert/update/delete restricted to owner
 create policy "profiles_select_all"   on print_profiles for select using (true);
-create policy "profiles_insert_own"   on print_profiles for insert with check (auth.uid() = user_id);
-create policy "profiles_update_own"   on print_profiles for update using (auth.uid() = user_id);
-create policy "profiles_delete_own"   on print_profiles for delete using (auth.uid() = user_id);
+create policy "profiles_insert_own"   on print_profiles for insert with check (auth.uid() = user_id and not current_user_disabled());
+create policy "profiles_update_own"   on print_profiles for update using (auth.uid() = user_id and not current_user_disabled());
+create policy "profiles_delete_own"   on print_profiles for delete using (auth.uid() = user_id and not current_user_disabled());
 
 -- FILAMENTS: public read; insert/update/delete restricted to owner
 create policy "filaments_select_all"  on filaments for select using (true);
-create policy "filaments_insert_own"  on filaments for insert with check (auth.uid() = user_id);
-create policy "filaments_update_own"  on filaments for update using (auth.uid() = user_id);
-create policy "filaments_delete_own"  on filaments for delete using (auth.uid() = user_id);
+create policy "filaments_insert_own"  on filaments for insert with check (auth.uid() = user_id and not current_user_disabled());
+create policy "filaments_update_own"  on filaments for update using (auth.uid() = user_id and not current_user_disabled());
+create policy "filaments_delete_own"  on filaments for delete using (auth.uid() = user_id and not current_user_disabled());
 
--- FAVORITES: fully private (all operations require ownership)
-create policy "favorites_all_own" on favorites for all using (auth.uid() = user_id);
+-- FAVORITES: fully private, split per-command (rather than one "for all"
+-- policy) so the disabled check applies to writes without affecting reads.
+create policy "favorites_select_own" on favorites for select using (auth.uid() = user_id);
+create policy "favorites_insert_own" on favorites for insert with check (auth.uid() = user_id and not current_user_disabled());
+create policy "favorites_update_own" on favorites for update using (auth.uid() = user_id and not current_user_disabled());
+create policy "favorites_delete_own" on favorites for delete using (auth.uid() = user_id and not current_user_disabled());
+
+-- PRINTER MODELS: public read; any signed-in, non-disabled user may add or
+-- remove (removal is additionally blocked by the printers/print_profiles FK
+-- constraints whenever the model is still in use)
+create policy "printer_models_select_all"        on printer_models for select using (true);
+create policy "printer_models_insert_authenticated" on printer_models for insert with check (auth.uid() is not null and not current_user_disabled());
+create policy "printer_models_delete_authenticated" on printer_models for delete using (auth.uid() is not null and not current_user_disabled());
+
+-- USER PROFILES: everyone can see their own row; elevated/admin can see every
+-- row (needed for the Users list/search). No insert/delete policy — rows are
+-- only ever created by the handle_new_auth_user trigger (security definer,
+-- bypasses RLS) and are never deleted. Column/role-level update rules (who
+-- can change what) are enforced by enforce_user_profile_update_permissions
+-- above, not by RLS itself.
+create policy "user_profiles_select" on user_profiles
+  for select using (auth.uid() = id or get_my_role() in ('elevated', 'admin'));
+
+create policy "user_profiles_update" on user_profiles
+  for update using (auth.uid() = id or get_my_role() in ('elevated', 'admin'));
 
 
 -- =================================================================
 -- 5. SEED DATA (User: 2fde1eae-bbd6-42c3-a02b-3851021923f3)
 -- =================================================================
+-- Assumes this auth.users row already exists (created via normal sign-up
+-- before running this script) — same assumption the printers/print_profiles
+-- inserts below already make via their user_id FK.
+
+insert into user_profiles (id, email, role) values
+  ('2fde1eae-bbd6-42c3-a02b-3851021923f3', 'demo@example.com', 'admin')
+  on conflict (id) do nothing;
+
+insert into printer_models (name) values
+  ('A1 Mini'), ('A1'), ('P1P'), ('P1S'), ('X1'), ('X1 Carbon'), ('X1E');
 
 insert into printers (user_id, name, model, nozzle_diameter, bed_size_x, bed_size_y) values
   ('2fde1eae-bbd6-42c3-a02b-3851021923f3', 'My A1 Mini',   'A1 Mini',   0.4, 180, 180),

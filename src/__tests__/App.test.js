@@ -17,6 +17,7 @@ vi.mock('@/lib/supabase', () => {
   return {
     supabase: {
       from: vi.fn(() => createChain()),
+      rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
       auth: {
         getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
         onAuthStateChange: vi.fn(() => ({
@@ -88,7 +89,7 @@ describe('App.vue — smoke tests', () => {
     const wrapper = mount(App)
     await flushPromises()
     expect(wrapper.findComponent({ name: 'AuthModal' }).props('isOpen')).toBe(false)
-    const signInBtn = wrapper.find('button.bg-emerald-600')
+    const signInBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Sign In / Up')
     await signInBtn.trigger('click')
     expect(wrapper.findComponent({ name: 'AuthModal' }).props('isOpen')).toBe(true)
   })

@@ -1,25 +1,59 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { supabase } from '@/lib/supabase';
 import AuthModal from '@/components/AuthModal.vue';
 import ResetPasswordModal from '@/components/ResetPasswordModal.vue';
 import EditorModal from '@/components/EditorModal.vue';
 import PrinterModal from '@/components/PrinterModal.vue';
+import UserEditModal from '@/components/UserEditModal.vue';
 
 // --- State ---
 const user = ref(null);
+const myProfile = ref(null); // this user's own user_profiles row (role, disabled, etc.)
 const profiles = ref([]);
 const filaments = ref([]);
 const printers = ref([]);
 const favorites = ref([]);
+const printerModels = ref([]);
+const modelUsage = ref({}); // { [modelName]: boolean } — whether a model is still referenced anywhere
+const users = ref([]); // user_profiles rows, loaded only for elevated/admin
+const userSearchQuery = ref('');
+const searchQuery = ref('');
+const searchScope = ref('both'); // 'profiles' | 'filaments' | 'both'
 
 const currentView = ref('profiles');
 const editingItem = ref(null);
 const editorType = ref('profile'); // 'profile' or 'filament'
 const editingPrinter = ref(null);
+const editingUser = ref(null);
 const showAuthModal = ref(false);
 const showResetPasswordModal = ref(false);
 const loading = ref(false);
+const newModelName = ref('');
+
+const printerModelNames = computed(() => printerModels.value.map(m => m.name));
+const myRole = computed(() => myProfile.value?.role || 'standard');
+const canManageUsers = computed(() => ['elevated', 'admin'].includes(myRole.value));
+const canWrite = computed(() => !!user.value && !myProfile.value?.disabled);
+const filteredUsers = computed(() => {
+  const q = userSearchQuery.value.trim().toLowerCase();
+  if (!q) return users.value;
+  return users.value.filter(u =>
+    u.email?.toLowerCase().includes(q) || u.full_name?.toLowerCase().includes(q)
+  );
+});
+
+const isSearching = computed(() => searchQuery.value.trim().length > 0);
+const searchResultsProfiles = computed(() => {
+  if (searchScope.value === 'filaments') return [];
+  const q = searchQuery.value.trim().toLowerCase();
+  return profiles.value.filter(p => p.name?.toLowerCase().includes(q));
+});
+const searchResultsFilaments = computed(() => {
+  if (searchScope.value === 'profiles') return [];
+  const q = searchQuery.value.trim().toLowerCase();
+  return filaments.value.filter(f => f.name?.toLowerCase().includes(q));
+});
 
 // --- Lifecycle ---
 onMounted(() => {
@@ -52,14 +86,33 @@ const loadData = async () => {
   // Load Printers
   const { data: prData } = await supabase.from('printers').select('*');
   printers.value = prData || [];
+  // Load Printer Models + their usage
+  const { data: pmData } = await supabase.from('printer_models').select('*').order('name');
+  printerModels.value = pmData || [];
+  await loadModelUsage();
 
   if (user.value) loadUserData();
   loading.value = false;
 };
 
+const loadModelUsage = async () => {
+  const { data } = await supabase.rpc('printer_model_usage');
+  modelUsage.value = Object.fromEntries((data || []).map(row => [row.name, row.in_use]));
+};
+
 const loadUserData = async () => {
   const { data } = await supabase.from('favorites').select('print_profile_id, filament_id').eq('user_id', user.value.id);
   if (data) favorites.value = data;
+
+  const { data: profileData } = await supabase.from('user_profiles').select('*').eq('id', user.value.id).single();
+  myProfile.value = profileData || null;
+
+  if (canManageUsers.value) await loadUsers();
+};
+
+const loadUsers = async () => {
+  const { data } = await supabase.from('user_profiles').select('*').order('email');
+  users.value = data || [];
 };
 
 // --- Auth ---
@@ -106,10 +159,14 @@ const handleResetPassword = async ({ password }) => {
 const signOut = async () => {
   await supabase.auth.signOut();
   favorites.value = [];
+  myProfile.value = null;
+  users.value = [];
 };
 
 // --- Helpers ---
-const isOwner = (item) => user.value && item.user_id === user.value.id;
+// A disabled account is treated as read-only even for its own data — RLS
+// rejects the writes regardless, this just keeps the UI honest about it.
+const isOwner = (item) => user.value && item.user_id === user.value.id && !myProfile.value?.disabled;
 
 const isFavorite = (id, type) => {
   if (type === 'profile') return favorites.value.some(f => f.print_profile_id === id);
@@ -118,6 +175,7 @@ const isFavorite = (id, type) => {
 
 const toggleFavorite = async (id, type) => {
   if (!user.value) return showAuthModal.value = true;
+  if (myProfile.value?.disabled) return alert('Your account is disabled.');
   if (isFavorite(id, type)) {
     await supabase.from('favorites').delete().eq('user_id', user.value.id).eq('print_profile_id', id);
     favorites.value = favorites.value.filter(f => f.print_profile_id !== id);
@@ -234,6 +292,40 @@ const createNewPrinter = () => {
   };
 };
 
+const createPrinterModel = async () => {
+  const name = newModelName.value.trim();
+  if (!name) return;
+  if (printerModels.value.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+    alert(`"${name}" is already in the list.`);
+    return;
+  }
+  const { data, error } = await supabase.from('printer_models').insert({ name }).select().single();
+  if (error) {
+    alert('Error adding model: ' + error.message);
+  } else {
+    printerModels.value.push(data);
+    printerModels.value.sort((a, b) => a.name.localeCompare(b.name));
+    modelUsage.value[data.name] = false;
+    newModelName.value = '';
+  }
+};
+
+const deletePrinterModel = async (model) => {
+  if (modelUsage.value[model.name]) return; // guarded in the UI too, but never act on a stale read
+  if (!confirm(`Remove "${model.name}" from the printer models list?`)) return;
+  const { error } = await supabase.from('printer_models').delete().eq('id', model.id);
+  if (error) {
+    // 23503 = foreign_key_violation — it became in-use after this page loaded
+    const message = error.code === '23503'
+      ? `"${model.name}" is now in use by a printer or print profile and can't be removed.`
+      : 'Error removing model: ' + error.message;
+    alert(message);
+    await loadModelUsage(); // refresh so the UI reflects that
+  } else {
+    printerModels.value = printerModels.value.filter(m => m.id !== model.id);
+  }
+};
+
 const cloneProfile = async (original) => {
   if (!confirm(`Clone "${original.name}" to your library?`)) return;
   const { id, created_at, user_id, ...data } = original;
@@ -324,6 +416,50 @@ const handleSavePrinter = async (printerToSave) => {
   }
   loading.value = false;
 };
+
+// --- Users (elevated/admin only) ---
+const handleSaveUser = async (updatedUser) => {
+  loading.value = true;
+  const payload = {
+    full_name: updatedUser.full_name,
+    phone: updatedUser.phone,
+    role: updatedUser.role,
+    disabled: updatedUser.disabled,
+  };
+  const { data, error } = await supabase.from('user_profiles').update(payload).eq('id', updatedUser.id).select().single();
+  if (error) {
+    alert('Error saving user: ' + error.message);
+  } else {
+    const idx = users.value.findIndex(u => u.id === data.id);
+    if (idx >= 0) users.value[idx] = data;
+    editingUser.value = null;
+  }
+  loading.value = false;
+};
+
+const handleChangeUserEmail = async ({ targetUserId, newEmail }) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  const { data, error } = await supabase.functions.invoke('update-user-email', {
+    body: { targetUserId, newEmail },
+    headers: { Authorization: `Bearer ${session?.access_token}` },
+  });
+  if (error || data?.error) {
+    alert('Error changing email: ' + (data?.error || error.message));
+  } else {
+    const idx = users.value.findIndex(u => u.id === targetUserId);
+    if (idx >= 0) users.value[idx].email = newEmail;
+    if (editingUser.value?.id === targetUserId) editingUser.value.email = newEmail;
+    alert('Email updated successfully.');
+  }
+};
+
+const handleSendUserPasswordReset = async ({ email }) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+  if (error) alert(error.message);
+  else alert(`Password reset email sent to ${email}.`);
+};
 </script>
 
 <template>
@@ -336,6 +472,23 @@ const handleSavePrinter = async (printerToSave) => {
         <div class="p-6 border-b border-gray-100">
           <h1 class="text-xl font-bold text-emerald-600 flex items-center gap-2">BambuDB</h1>
         </div>
+        <div class="p-4 border-b border-gray-100 space-y-2">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search profiles & filaments..."
+            class="w-full border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+          >
+          <div class="flex gap-1 text-xs">
+            <button
+              v-for="scope in ['profiles', 'filaments', 'both']"
+              :key="scope"
+              @click="searchScope = scope"
+              :class="searchScope === scope ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+              class="flex-1 py-1 rounded capitalize font-medium transition-colors"
+            >{{ scope }}</button>
+          </div>
+        </div>
         <nav class="flex-1 p-4 space-y-1">
           <button @click="currentView='profiles'" :class="currentView==='profiles' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
             <span class="mr-3">📄</span> Print Profiles
@@ -346,10 +499,20 @@ const handleSavePrinter = async (printerToSave) => {
           <button @click="currentView='printers'" :class="currentView==='printers' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
             <span class="mr-3">🖨️</span> Printers
           </button>
+          <button @click="currentView='printer_models'" :class="currentView==='printer_models' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            <span class="mr-3">🔧</span> Printer Models
+          </button>
+          <button v-if="canManageUsers" @click="currentView='users'" :class="currentView==='users' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            <span class="mr-3">👥</span> Users
+          </button>
         </nav>
         <div class="p-4 border-t border-gray-200">
           <div v-if="user" class="flex flex-col gap-2">
             <div class="text-sm font-medium text-gray-800 truncate" :title="user.email">{{ user.email }}</div>
+            <div v-if="myProfile && myRole !== 'standard'" class="text-xs text-gray-400 uppercase font-bold">{{ myRole }}</div>
+            <div v-if="myProfile?.disabled" class="text-xs text-red-600 font-medium bg-red-50 border border-red-100 rounded px-2 py-1">
+              Account disabled
+            </div>
             <button @click="signOut" class="mt-2 w-full text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 hover:bg-gray-100">Sign Out</button>
           </div>
           <div v-else>
@@ -360,12 +523,47 @@ const handleSavePrinter = async (printerToSave) => {
 
       <!-- Content -->
       <main class="flex-1 overflow-auto bg-gray-50 p-4 md:p-8">
-        
+
+        <!-- SEARCH RESULTS (takes over from the tab views while searching) -->
+        <div v-if="isSearching">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6">
+            Search results for "{{ searchQuery }}"
+          </h2>
+
+          <div v-if="searchScope !== 'filaments'" class="mb-8">
+            <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Print Profiles</h3>
+            <div v-if="searchResultsProfiles.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div v-for="profile in searchResultsProfiles" :key="profile.id" @click="openEditor(profile, 'profile')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow p-5">
+                <h3 class="font-bold text-lg text-gray-900 truncate">{{ profile.name }}</h3>
+                <div class="flex items-center gap-2 text-xs text-gray-500 mt-2">
+                  <span class="bg-gray-100 px-2 py-0.5 rounded border border-gray-200">{{ isOwner(profile) ? 'My Profile' : 'Community' }}</span>
+                  <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100 font-medium">{{ profile.printer_model }}</span>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-400">No matching print profiles.</p>
+          </div>
+
+          <div v-if="searchScope !== 'profiles'">
+            <h3 class="text-sm font-bold text-gray-500 uppercase mb-3">Filaments</h3>
+            <div v-if="searchResultsFilaments.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div v-for="fil in searchResultsFilaments" :key="fil.id" @click="openEditor(fil, 'filament')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+                <div class="h-3 w-full border-b border-gray-100" :style="{ backgroundColor: fil.basic_settings?.color || '#ccc' }"></div>
+                <div class="p-5">
+                  <h3 class="font-bold text-lg text-gray-900 truncate">{{ fil.name }}</h3>
+                  <div class="text-sm text-gray-500">{{ fil.basic_settings?.vendor || 'Generic' }}</div>
+                </div>
+              </div>
+            </div>
+            <p v-else class="text-sm text-gray-400">No matching filaments.</p>
+          </div>
+        </div>
+
         <!-- PROFILES -->
-        <div v-if="currentView === 'profiles'">
+        <div v-if="currentView === 'profiles' && !isSearching">
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Print Profiles</h2>
-            <button v-if="user" @click="createNewProfile" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Profile</button>
+            <button v-if="canWrite" @click="createNewProfile" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Profile</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="profile in profiles" :key="profile.id" @click="openEditor(profile, 'profile')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow">
@@ -391,10 +589,10 @@ const handleSavePrinter = async (printerToSave) => {
         </div>
 
         <!-- FILAMENTS -->
-        <div v-if="currentView === 'filaments'">
+        <div v-if="currentView === 'filaments' && !isSearching">
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Filaments</h2>
-            <button v-if="user" @click="createNewFilament" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Filament</button>
+            <button v-if="canWrite" @click="createNewFilament" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Filament</button>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="fil in filaments" :key="fil.id" @click="openEditor(fil, 'filament')" class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
@@ -418,10 +616,10 @@ const handleSavePrinter = async (printerToSave) => {
         </div>
 
         <!-- PRINTERS -->
-        <div v-if="currentView === 'printers'">
+        <div v-if="currentView === 'printers' && !isSearching">
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Printers</h2>
-            <button v-if="user" @click="createNewPrinter" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Printer</button>
+            <button v-if="canWrite" @click="createNewPrinter" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Printer</button>
           </div>
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table class="w-full text-left text-sm text-gray-600">
@@ -452,6 +650,90 @@ const handleSavePrinter = async (printerToSave) => {
           </div>
         </div>
 
+        <!-- PRINTER MODELS -->
+        <div v-if="currentView === 'printer_models' && !isSearching">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6">Printer Models</h2>
+          <p class="text-sm text-gray-500 mb-4">Shared list of target printer models available across Print Profiles and Printers.</p>
+
+          <div v-if="canWrite" class="flex gap-2 mb-6 max-w-md">
+            <input
+              v-model="newModelName"
+              @keyup.enter="createPrinterModel"
+              type="text"
+              placeholder="e.g. H2D"
+              class="flex-1 border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+            >
+            <button @click="createPrinterModel" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm">Add</button>
+          </div>
+
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-w-md">
+            <ul class="divide-y divide-gray-100">
+              <li v-for="model in printerModels" :key="model.id" class="flex justify-between items-center p-4">
+                <span class="font-medium text-gray-900">{{ model.name }}</span>
+                <template v-if="canWrite">
+                  <button
+                    v-if="!modelUsage[model.name]"
+                    @click="deletePrinterModel(model)"
+                    class="text-gray-400 hover:text-red-600"
+                    title="Remove this model"
+                  >🗑</button>
+                  <span v-else class="text-amber-500" title="In use by one or more printers or print profiles">⚠️</span>
+                </template>
+              </li>
+            </ul>
+            <div v-if="printerModels.length === 0" class="p-8 text-center text-gray-400 text-sm">
+              No printer models yet.
+            </div>
+          </div>
+        </div>
+
+        <!-- USERS (elevated/admin only) -->
+        <div v-if="currentView === 'users' && canManageUsers && !isSearching">
+          <h2 class="text-2xl font-bold text-gray-800 mb-6">Users</h2>
+          <input
+            v-model="userSearchQuery"
+            type="text"
+            placeholder="Search by email or name..."
+            class="mb-4 w-full max-w-md border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+          >
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full text-left text-sm text-gray-600">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th class="p-4 font-semibold text-gray-900">Email</th>
+                  <th class="p-4 font-semibold text-gray-900">Name</th>
+                  <th class="p-4 font-semibold text-gray-900">Phone</th>
+                  <th class="p-4 font-semibold text-gray-900">Role</th>
+                  <th class="p-4 font-semibold text-gray-900">Status</th>
+                  <th class="p-4 font-semibold text-gray-900"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-gray-50">
+                  <td class="p-4 font-medium text-gray-900">{{ u.email }}</td>
+                  <td class="p-4">{{ u.full_name || '—' }}</td>
+                  <td class="p-4">{{ u.phone || '—' }}</td>
+                  <td class="p-4"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-bold uppercase">{{ u.role }}</span></td>
+                  <td class="p-4">
+                    <span v-if="u.disabled" class="text-red-600 font-medium">Disabled</span>
+                    <span v-else class="text-emerald-600 font-medium">Active</span>
+                  </td>
+                  <td class="p-4 text-right">
+                    <button
+                      v-if="myRole === 'admin' || u.role === 'standard'"
+                      @click="editingUser = u"
+                      class="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+                    >Edit</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredUsers.length === 0" class="p-8 text-center text-gray-400 text-sm">
+              No users found.
+            </div>
+          </div>
+        </div>
+
       </main>
     </div>
 
@@ -475,6 +757,7 @@ const handleSavePrinter = async (printerToSave) => {
       :isOwner="isOwner(editingItem)"
       :loading="loading"
       :profiles="profiles"
+      :printerModels="printerModelNames"
       @close="editingItem = null"
       @save="handleSaveItem"
     />
@@ -482,9 +765,20 @@ const handleSavePrinter = async (printerToSave) => {
     <PrinterModal
       :printer="editingPrinter"
       :profiles="profiles"
+      :printerModels="printerModelNames"
       :loading="loading"
       @close="editingPrinter = null"
       @save="handleSavePrinter"
+    />
+
+    <UserEditModal
+      :targetUser="editingUser"
+      :myRole="myRole"
+      :loading="loading"
+      @close="editingUser = null"
+      @save="handleSaveUser"
+      @change-email="handleChangeUserEmail"
+      @send-password-reset="handleSendUserPasswordReset"
     />
 
   </div>

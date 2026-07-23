@@ -1,13 +1,14 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { profileSchema, filamentSchema, PRINTER_MODELS, PRINTER_MODEL_SPEED_DEFAULTS } from '@/constants/schemas';
+import { profileSchema, filamentSchema, PRINTER_MODEL_SPEED_DEFAULTS } from '@/constants/schemas';
 
 const props = defineProps({
-  item: Object,      // The profile or filament object being edited
-  type: String,      // 'profile' or 'filament'
-  isOwner: Boolean,  // Read-only check
-  loading: Boolean,  // Saving state
-  profiles: Array    // Available profiles for linking
+  item: Object,          // The profile or filament object being edited
+  type: String,          // 'profile' or 'filament'
+  isOwner: Boolean,      // Read-only check
+  loading: Boolean,      // Saving state
+  profiles: Array,       // Available profiles for linking
+  printerModels: Array,  // Available printer model names for the Target dropdown
 });
 
 const emit = defineEmits(['close', 'save']);
@@ -103,7 +104,7 @@ const handleClose = () => {
                  aria-label="Target Printer"
                  class="text-sm font-bold text-gray-800 bg-transparent outline-none cursor-pointer disabled:cursor-not-allowed"
                >
-                 <option v-for="m in PRINTER_MODELS" :key="m" :value="m">{{ m }}</option>
+                 <option v-for="m in printerModels" :key="m" :value="m">{{ m }}</option>
                </select>
             </div>
           </div>

@@ -7,6 +7,8 @@ const baseProfiles = [
   { id: 'profile-2', name: '0.20mm Standard @X1C', printer_model: 'X1 Carbon' },
 ]
 
+const basePrinterModels = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E']
+
 const newPrinter = () => ({
   user_id: 'user-1',
   name: 'New Printer',
@@ -19,25 +21,31 @@ const newPrinter = () => ({
 
 describe('PrinterModal', () => {
   it('does not render when printer is null', () => {
-    const wrapper = mount(PrinterModal, { props: { printer: null, profiles: baseProfiles, loading: false } })
+    const wrapper = mount(PrinterModal, { props: { printer: null, profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
     expect(wrapper.find('input').exists()).toBe(false)
   })
 
   it('renders name, model, nozzle, and bed size fields when a printer is given', () => {
-    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, loading: false } })
+    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
     expect(wrapper.text()).toContain('New Printer')
     expect(wrapper.find('select').exists()).toBe(true)
     expect(wrapper.findAll('input[type="number"]')).toHaveLength(3)
   })
 
+  it('lists the given printer models in the Model select', () => {
+    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
+    const modelSelect = wrapper.findAll('select')[0]
+    basePrinterModels.forEach((m) => expect(modelSelect.text()).toContain(m))
+  })
+
   it('lists available print profiles in the default-profile select, including printer model', () => {
-    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, loading: false } })
+    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
     expect(wrapper.text()).toContain('0.20mm Standard @A1Mini (A1 Mini)')
     expect(wrapper.text()).toContain('0.20mm Standard @X1C (X1 Carbon)')
   })
 
   it('emits "save" with the edited printer, including a changed default profile', async () => {
-    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, loading: false } })
+    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
     const selects = wrapper.findAll('select')
     const defaultProfileSelect = selects[1] // [0] = model, [1] = default profile
     await defaultProfileSelect.setValue('profile-2')
@@ -47,7 +55,7 @@ describe('PrinterModal', () => {
   })
 
   it('emits "close" when Cancel is clicked without changes', async () => {
-    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, loading: false } })
+    const wrapper = mount(PrinterModal, { props: { printer: newPrinter(), profiles: baseProfiles, printerModels: basePrinterModels, loading: false } })
     const cancelBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')
     await cancelBtn.trigger('click')
     expect(wrapper.emitted('close')).toBeTruthy()

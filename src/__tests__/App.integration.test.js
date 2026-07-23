@@ -7,12 +7,33 @@ import { mount, flushPromises } from '@vue/test-utils'
 // thenable so `await supabase.from(x).select(...)` resolves to `_result`
 // regardless of how many (or few) methods were chained before it.
 function createChain() {
-  const chain = { _result: { data: [], error: null } }
-  ;['select', 'order', 'eq', 'insert', 'update', 'delete'].forEach((method) => {
+  const chain = { _result: { data: [], error: null }, _filters: [] }
+  ;['select', 'order', 'insert', 'update', 'delete'].forEach((method) => {
     chain[method] = vi.fn(() => chain)
   })
-  chain.single = vi.fn(() => Promise.resolve(chain._result))
-  chain.then = (resolve, reject) => Promise.resolve(chain._result).then(resolve, reject)
+  chain.eq = vi.fn((col, val) => {
+    chain._filters.push([col, val])
+    return chain
+  })
+  // If `_result.data` is an array (a plain "select many" fixture), `.single()`
+  // narrows it by whatever `.eq()` filters were chained first — e.g. so a
+  // shared `user_profiles` fixture can serve both "my own row" (.eq('id', me))
+  // and "every row" (no filter) queries. If `_result.data` is already a single
+  // object (the common insert/update-then-.single() fixture pattern used
+  // throughout this file), it's returned as-is, ignoring any filters.
+  chain.single = vi.fn(() => {
+    let data = chain._result.data
+    if (Array.isArray(data)) {
+      data = chain._filters.reduce((rows, [col, val]) => rows.filter((r) => r[col] === val), data)[0] ?? null
+    }
+    chain._filters = []
+    return Promise.resolve({ data, error: chain._result.error })
+  })
+  chain.then = (resolve, reject) => {
+    const result = chain._result
+    chain._filters = []
+    return Promise.resolve(result).then(resolve, reject)
+  }
   return chain
 }
 
@@ -28,6 +49,10 @@ vi.mock('@/lib/supabase', () => {
   return {
     supabase: {
       from: vi.fn((table) => getChain(table)),
+      rpc: vi.fn(() => Promise.resolve({ data: [], error: null })),
+      functions: {
+        invoke: vi.fn(() => Promise.resolve({ data: { success: true }, error: null })),
+      },
       auth: {
         getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
         onAuthStateChange: vi.fn((cb) => {
@@ -54,19 +79,25 @@ const mockUser = { id: 'user-1', email: 'owner@example.com' }
 beforeEach(() => {
   // Pre-warm every table's chain so tests can configure `_result` before mounting,
   // regardless of which test runs first.
-  ;['print_profiles', 'filaments', 'printers', 'favorites'].forEach((t) => supabase.from(t))
+  ;['print_profiles', 'filaments', 'printers', 'favorites', 'printer_models', 'user_profiles'].forEach((t) => supabase.from(t))
   vi.clearAllMocks()
   Object.values(supabase.__chains).forEach((chain) => {
     chain._result = { data: [], error: null }
   })
+  supabase.rpc.mockResolvedValue({ data: [], error: null })
+  supabase.functions.invoke.mockResolvedValue({ data: { success: true }, error: null })
 })
 
-const mountSignedIn = async () => {
+const mountSignedInAs = async (role = 'standard', overrides = {}, otherUsers = []) => {
   supabase.auth.getSession.mockResolvedValueOnce({ data: { session: { user: mockUser } } })
+  const myRow = { id: mockUser.id, email: mockUser.email, role, disabled: false, full_name: null, phone: null, ...overrides }
+  supabase.__chains.user_profiles._result = { data: [myRow, ...otherUsers], error: null }
   const wrapper = mount(App)
   await flushPromises()
   return wrapper
 }
+
+const mountSignedIn = () => mountSignedInAs('standard')
 
 const goToView = async (wrapper, label) => {
   const btn = wrapper.findAll('nav button').find((b) => b.text().includes(label))
@@ -227,7 +258,7 @@ describe('App.vue — auth session', () => {
   it('sends a password reset email with a redirect back to the app', async () => {
     const wrapper = mount(App)
     await flushPromises()
-    const signInBtn = wrapper.find('button.bg-emerald-600')
+    const signInBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Sign In / Up')
     await signInBtn.trigger('click')
     const forgotLink = wrapper.findAll('span.underline').find((s) => s.text().includes('Forgot password?'))
     await forgotLink.trigger('click')
@@ -326,5 +357,234 @@ describe('App.vue — printer CRUD', () => {
     await goToView(wrapper, 'Printers')
 
     expect(wrapper.text()).toContain('Profile A')
+  })
+})
+
+// --- Printer Models ---
+
+describe('App.vue — printer models', () => {
+  it('adds a new printer model', async () => {
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Printer Models')
+
+    supabase.__chains.printer_models._result = { data: { id: 'model-new', name: 'H2D' }, error: null }
+    await wrapper.find('input[placeholder="e.g. H2D"]').setValue('H2D')
+    const addBtn = wrapper.findAll('button').find((b) => b.text().trim() === 'Add')
+    await addBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.printer_models.insert).toHaveBeenCalledWith({ name: 'H2D' })
+    expect(wrapper.text()).toContain('H2D')
+  })
+
+  it('shows a delete button for a model that is not in use, and a warning icon for one that is', async () => {
+    const modelA = { id: 'model-a', name: 'A1 Mini' }
+    const modelB = { id: 'model-b', name: 'P1S' }
+    supabase.__chains.printer_models._result = { data: [modelA, modelB], error: null }
+    supabase.rpc.mockResolvedValueOnce({
+      data: [{ name: 'A1 Mini', in_use: true }, { name: 'P1S', in_use: false }],
+      error: null,
+    })
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Printer Models')
+
+    const rows = wrapper.findAll('li')
+    const a1Row = rows.find((r) => r.text().includes('A1 Mini'))
+    const p1sRow = rows.find((r) => r.text().includes('P1S'))
+    expect(a1Row.find('[title*="In use"]').exists()).toBe(true)
+    expect(a1Row.find('button').exists()).toBe(false)
+    expect(p1sRow.find('button').exists()).toBe(true)
+  })
+
+  it('deletes a printer model that is not in use', async () => {
+    const modelB = { id: 'model-b', name: 'P1S' }
+    supabase.__chains.printer_models._result = { data: [modelB], error: null }
+    supabase.rpc.mockResolvedValueOnce({ data: [{ name: 'P1S', in_use: false }], error: null })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Printer Models')
+
+    const deleteBtn = wrapper.find('li button')
+    await deleteBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.printer_models.delete).toHaveBeenCalled()
+    expect(supabase.__chains.printer_models.eq).toHaveBeenCalledWith('id', 'model-b')
+    expect(wrapper.text()).not.toContain('P1S')
+    window.confirm.mockRestore()
+  })
+})
+
+// --- Access Levels / Users ---
+
+describe('App.vue — access levels', () => {
+  const otherStandard = () => ({ id: 'user-2', email: 'other-standard@example.com', role: 'standard', disabled: false, full_name: null, phone: null })
+  const otherElevated = () => ({ id: 'user-3', email: 'other-elevated@example.com', role: 'elevated', disabled: false, full_name: null, phone: null })
+
+  it('hides the Users nav item for a standard user', async () => {
+    const wrapper = await mountSignedInAs('standard')
+    const usersBtn = wrapper.findAll('nav button').find((b) => b.text().includes('Users'))
+    expect(usersBtn).toBeUndefined()
+  })
+
+  it('shows the Users nav item and lists other users for an elevated user', async () => {
+    const wrapper = await mountSignedInAs('elevated', {}, [otherStandard()])
+    const usersBtn = wrapper.findAll('nav button').find((b) => b.text().includes('Users'))
+    expect(usersBtn).not.toBeUndefined()
+    await usersBtn.trigger('click')
+    expect(wrapper.text()).toContain('other-standard@example.com')
+  })
+
+  it('filters the users list by the search box', async () => {
+    const wrapper = await mountSignedInAs('elevated', {}, [otherStandard(), otherElevated()])
+    await goToView(wrapper, 'Users')
+    await wrapper.find('input[placeholder*="email or name"]').setValue('other-elevated')
+    expect(wrapper.text()).toContain('other-elevated@example.com')
+    expect(wrapper.text()).not.toContain('other-standard@example.com')
+  })
+
+  it('does not show an Edit button for an elevated user acting on another elevated/admin user', async () => {
+    const wrapper = await mountSignedInAs('elevated', {}, [otherElevated()])
+    await goToView(wrapper, 'Users')
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-elevated@example.com'))
+    expect(row.findAll('button')).toHaveLength(0)
+  })
+
+  it('lets an elevated user edit a standard user\'s name/phone/disabled but locks the role select', async () => {
+    const wrapper = await mountSignedInAs('elevated', {}, [otherStandard()])
+    await goToView(wrapper, 'Users')
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-standard@example.com'))
+    await row.find('button').trigger('click')
+
+    const modal = wrapper.findComponent({ name: 'UserEditModal' })
+    expect(modal.find('#user-role').attributes('disabled')).toBeDefined()
+
+    supabase.__chains.user_profiles._result = { data: { ...otherStandard(), full_name: 'Updated Name', disabled: true }, error: null }
+    await modal.find('#user-full-name').setValue('Updated Name')
+    await modal.find('#user-disabled').setValue(true)
+    await modal.find('button.bg-emerald-600').trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.user_profiles.update).toHaveBeenCalledWith(
+      expect.objectContaining({ full_name: 'Updated Name', disabled: true, role: 'standard' })
+    )
+    expect(supabase.__chains.user_profiles.eq).toHaveBeenCalledWith('id', 'user-2')
+  })
+
+  it('lets an admin change a user\'s role', async () => {
+    const wrapper = await mountSignedInAs('admin', {}, [otherStandard()])
+    await goToView(wrapper, 'Users')
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-standard@example.com'))
+    await row.find('button').trigger('click')
+
+    const modal = wrapper.findComponent({ name: 'UserEditModal' })
+    expect(modal.find('#user-role').attributes('disabled')).toBeUndefined()
+
+    supabase.__chains.user_profiles._result = { data: { ...otherStandard(), role: 'elevated' }, error: null }
+    await modal.find('#user-role').setValue('elevated')
+    await modal.find('button.bg-emerald-600').trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.user_profiles.update).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'elevated' })
+    )
+  })
+
+  it('changes a user\'s email via the Edge Function', async () => {
+    const wrapper = await mountSignedInAs('admin', {}, [otherStandard()])
+    await goToView(wrapper, 'Users')
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-standard@example.com'))
+    await row.find('button').trigger('click')
+
+    const modal = wrapper.findComponent({ name: 'UserEditModal' })
+    const changeEmailBtn = modal.findAll('button').find((b) => b.text().includes('Change Email'))
+    await changeEmailBtn.trigger('click')
+    await modal.find('input[type="email"]').setValue('new-email@example.com')
+    const updateBtn = modal.findAll('button').find((b) => b.text().trim() === 'Update')
+    await updateBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith(
+      'update-user-email',
+      expect.objectContaining({ body: { targetUserId: 'user-2', newEmail: 'new-email@example.com' } })
+    )
+  })
+
+  it('sends a password reset email to the target user', async () => {
+    const wrapper = await mountSignedInAs('admin', {}, [otherStandard()])
+    await goToView(wrapper, 'Users')
+    const row = wrapper.findAll('tbody tr').find((r) => r.text().includes('other-standard@example.com'))
+    await row.find('button').trigger('click')
+
+    const modal = wrapper.findComponent({ name: 'UserEditModal' })
+    const resetBtn = modal.findAll('button').find((b) => b.text().includes('Send Password Reset Email'))
+    await resetBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+      'other-standard@example.com',
+      expect.objectContaining({ redirectTo: expect.any(String) })
+    )
+  })
+
+  it('hides write actions and shows a banner for a disabled account', async () => {
+    const wrapper = await mountSignedInAs('standard', { disabled: true })
+    expect(wrapper.text()).toContain('Account disabled')
+    expect(wrapper.findAll('button').find((b) => b.text().includes('New Profile'))).toBeUndefined()
+  })
+})
+
+// --- Search ---
+
+describe('App.vue — search', () => {
+  const profileA = { id: 'p-1', name: 'Overture Standard Profile', user_id: mockUser.id, printer_model: 'A1 Mini' }
+  const profileB = { id: 'p-2', name: 'X1C Speed Tune', user_id: 'someone-else', printer_model: 'X1 Carbon' }
+  const filamentA = { id: 'f-1', name: 'Generic Overture Filament', user_id: mockUser.id, basic_settings: {} }
+  const filamentB = { id: 'f-2', name: 'Bambu PETG', user_id: 'someone-else', basic_settings: {} }
+
+  const mountWithData = async () => {
+    supabase.__chains.print_profiles._result = { data: [profileA, profileB], error: null }
+    supabase.__chains.filaments._result = { data: [filamentA, filamentB], error: null }
+    return mountSignedIn()
+  }
+
+  it('defaults to searching both profiles and filaments by name', async () => {
+    const wrapper = await mountWithData()
+    await wrapper.find('input[placeholder="Search profiles & filaments..."]').setValue('overture')
+    expect(wrapper.text()).toContain('Overture Standard Profile')
+    expect(wrapper.text()).toContain('Generic Overture Filament')
+    expect(wrapper.text()).not.toContain('X1C Speed Tune')
+    expect(wrapper.text()).not.toContain('Bambu PETG')
+  })
+
+  it('replaces the current tab view with results while searching, and restores it when cleared', async () => {
+    const wrapper = await mountWithData()
+    const searchInput = wrapper.find('input[placeholder="Search profiles & filaments..."]')
+    await searchInput.setValue('overture')
+    expect(wrapper.text()).toContain('Search results for')
+
+    await searchInput.setValue('')
+    expect(wrapper.text()).not.toContain('Search results for')
+    expect(wrapper.text()).toContain('X1C Speed Tune') // back to the normal Print Profiles tab
+  })
+
+  it('narrows to profiles only when that scope is selected', async () => {
+    const wrapper = await mountWithData()
+    const scopeBtn = wrapper.findAll('button').find(b => b.text().trim() === 'profiles')
+    await scopeBtn.trigger('click')
+    await wrapper.find('input[placeholder="Search profiles & filaments..."]').setValue('overture')
+
+    expect(wrapper.text()).toContain('Overture Standard Profile')
+    expect(wrapper.text()).not.toContain('Generic Overture Filament')
+  })
+
+  it('narrows to filaments only when that scope is selected', async () => {
+    const wrapper = await mountWithData()
+    const scopeBtn = wrapper.findAll('button').find(b => b.text().trim() === 'filaments')
+    await scopeBtn.trigger('click')
+    await wrapper.find('input[placeholder="Search profiles & filaments..."]').setValue('overture')
+
+    expect(wrapper.text()).toContain('Generic Overture Filament')
+    expect(wrapper.text()).not.toContain('Overture Standard Profile')
   })
 })

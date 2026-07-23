@@ -1,10 +1,10 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { PRINTER_MODELS } from '@/constants/schemas';
 
 const props = defineProps({
-  printer: Object,   // The printer being edited (or a fresh one for create)
-  profiles: Array,   // Available print profiles to pick a default from
+  printer: Object,       // The printer being edited (or a fresh one for create)
+  profiles: Array,       // Available print profiles to pick a default from
+  printerModels: Array,  // Available printer model names
   loading: Boolean,
 });
 
@@ -59,7 +59,7 @@ const handleClose = () => {
             v-model="editingPrinter.model"
             class="w-full border border-gray-300 p-2 rounded text-sm bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
           >
-            <option v-for="m in PRINTER_MODELS" :key="m" :value="m">{{ m }}</option>
+            <option v-for="m in printerModels" :key="m" :value="m">{{ m }}</option>
           </select>
         </div>
 

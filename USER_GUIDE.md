@@ -4,13 +4,18 @@ BambuDB is a place to store, share, and reuse print profiles, filament settings,
 
 ## Getting Around
 
-The sidebar has three sections:
+The sidebar has four sections:
 
 - **📄 Print Profiles** — slicer settings (layer height, speed, supports, etc.), targeted at a printer model.
 - **🧶 Filaments** — material settings (temperatures, cooling, flow) for a specific filament.
 - **🖨️ Printers** — your own physical printers, each with an optional default print profile.
+- **🔧 Printer Models** — the shared list of target printer models used by the two sections above.
 
-You can browse Print Profiles and Filaments without an account — everyone's profiles are visible to everyone (read-only unless you own them). Printers are private: you only ever see your own.
+You can browse Print Profiles, Filaments, and Printer Models without an account — these are all visible to everyone (read-only unless you own them, or in the case of Printer Models, unless you're signed in to add/remove). Printers are private: you only ever see your own.
+
+## Searching
+
+At the top of the sidebar is a search box with three scope buttons: **profiles**, **filaments**, and **both** (the default). Type a few letters of a name and the main area switches to a **Search Results** view showing whichever type(s) you've scoped it to — clear the box to go back to whatever tab you were on. It only matches against names, not vendor, printer model, or any of the detailed settings.
 
 ## Creating an Account
 
@@ -52,7 +57,7 @@ Every profile shows its name, owner ("My Profile" or "Community"), target printe
 
 ### Editing
 
-Open one of your own profiles and change any field, then **Save Changes**. Changing the **Target** model resets the Speed tab to that model's defaults, so re-check your speed settings after switching targets. If you close the editor with unsaved changes, you'll be asked to confirm before they're discarded.
+Open one of your own profiles and change any field, then **Save Changes**. The **Target** printer can only be set while creating a new profile — once saved, it's locked (so an existing profile's tuned settings can't get reset out from under it by accident). If you close the editor with unsaved changes, you'll be asked to confirm before they're discarded.
 
 ### Forking (Copying) a Community Profile
 
@@ -98,6 +103,45 @@ Printers are your personal equipment list — only you can see and manage them.
 1. Click the printer's row in the Printers table to reopen the editor.
 2. Change the **Default Print Profile** dropdown to a different profile (or "None" to clear it).
 3. Click **Save Changes**. The Printers table's "Default Profile" column updates immediately.
+
+## Printer Models
+
+This is the shared list of printer models offered in the **Target** dropdown (Print Profiles) and **Model** dropdown (Printers). Everyone sees the same list.
+
+### Adding a Model
+
+While signed in, type a name (e.g. "H2D") into the box at the top of the Printer Models page and click **Add**. It's immediately available to everyone.
+
+### Removing a Model
+
+Each model shows either:
+- A 🗑 button, if it's not currently used by any printer or print profile — click it and confirm to remove it.
+- A ⚠️ icon, if it's still in use — hover over it to see why. You can't remove a model that's still referenced; switch anything using it to a different model first (removing a model does **not** change profiles/printers that already reference it by name — it just takes it out of the picker for new ones).
+
+## Account Access Levels
+
+Every account has one of three roles, visible in the sidebar under your email (nothing shown means **standard**, the default for everyone who signs up):
+
+- **Standard** — normal use of the app: your own profiles/filaments/printers, favorites, and the shared Printer Models list.
+- **Elevated** — everything standard, plus a **👥 Users** section for managing **standard** accounts: edit their name/phone, enable or disable them, send a password reset, or change their email. Elevated accounts can't touch other elevated or admin accounts, and can't change anyone's role.
+- **Admin** — everything elevated, but for *any* account (including other admins), plus the ability to change a user's role.
+
+Roles are assigned by an admin from the Users page — there's no self-service way to become elevated or admin, and nobody (not even an admin) can change their own role or disable themselves.
+
+### Managing Users (Elevated / Admin)
+
+1. Click **👥 Users** in the sidebar (only visible if your account is elevated or admin).
+2. Search by email or name using the box at the top.
+3. Click **Edit** on a row you're permitted to manage (rows you can't touch simply won't have an Edit button).
+4. In the dialog, you can:
+   - Update **Name** and **Phone**.
+   - Toggle **Account Disabled** — a disabled account can still sign in and view its data, but can't create, edit, delete, or favorite anything anywhere in the app.
+   - Change the **Role** (admins only — the dropdown is locked for elevated users).
+   - Click **Change Email** to set a new login email for that user.
+   - Click **Send Password Reset Email** to send them the same reset link they'd get from "Forgot password?".
+5. Click **Save Changes**.
+
+If your own account is disabled, you'll see an "Account disabled" notice in the sidebar and every "+ New ..." button disappears — you're in read-only mode until an elevated or admin user re-enables you.
 
 ## Signing Out
 
