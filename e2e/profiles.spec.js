@@ -63,3 +63,22 @@ test('changing the target printer updates the speed defaults', async ({ page }) 
 
   await expect(page.getByText('Acceleration').locator('..').getByRole('spinbutton')).toHaveValue('10000');
 });
+
+test('clones a community profile from the Clone button inside the editor', async ({ page }) => {
+  await mockSupabase(page, { profiles: [communityProfile] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByText('Community 0.20mm').click();
+  await expect(page.getByRole('button', { name: 'Clone' })).toBeVisible();
+
+  page.once('dialog', (dialog) => dialog.accept());
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/print_profiles') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Clone' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.name).toBe('Community 0.20mm (Copy)');
+  expect(body.user_id).toBe('e2e-user-1');
+  expect(body).not.toHaveProperty('id');
+});

@@ -171,16 +171,45 @@ describe('App.vue — print profile CRUD', () => {
     expect(supabase.__chains.print_profiles.insert.mock.calls[0][0]).not.toHaveProperty('id')
     window.confirm.mockRestore()
   })
+
+  it('clones a profile from the Clone button inside the editor modal', async () => {
+    const communityProfile = {
+      id: 'profile-2', name: 'Community Profile', printer_model: 'X1 Carbon', user_id: 'someone-else',
+      created_at: '2026-01-01', quality: {}, strength: {}, speed: {}, support: {}, others: {},
+    }
+    supabase.__chains.print_profiles._result = { data: [communityProfile], error: null }
+    const wrapper = await mountSignedIn()
+
+    const card = wrapper.findAll('.cursor-pointer').find((c) => c.text().includes('Community Profile'))
+    await card.trigger('click')
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    supabase.__chains.print_profiles._result = {
+      data: { ...communityProfile, id: 'profile-clone', name: 'Community Profile (Copy)', user_id: mockUser.id },
+      error: null,
+    }
+    const modal = wrapper.findComponent({ name: 'EditorModal' })
+    const cloneBtn = modal.findAll('button').find((b) => b.text().trim() === 'Clone')
+    await cloneBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.print_profiles.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Community Profile (Copy)', user_id: mockUser.id })
+    )
+    window.confirm.mockRestore()
+  })
 })
 
 // --- Filaments ---
 
 describe('App.vue — filament CRUD', () => {
   it('creates a new filament and inserts it into filaments', async () => {
+    const profileA = { id: 'profile-a', name: 'Profile A', printer_model: 'A1 Mini' }
+    supabase.__chains.print_profiles._result = { data: [profileA], error: null }
     const wrapper = await mountSignedIn()
     await goToView(wrapper, 'Filaments')
     supabase.__chains.filaments._result = {
-      data: { id: 'filament-new', name: 'New Generic PLA', user_id: mockUser.id },
+      data: { id: 'filament-new', name: 'New Generic PLA', user_id: mockUser.id, print_profile_id: 'profile-a' },
       error: null,
     }
 
@@ -191,8 +220,38 @@ describe('App.vue — filament CRUD', () => {
     await flushPromises()
 
     expect(supabase.__chains.filaments.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New Generic PLA', user_id: mockUser.id })
+      expect.objectContaining({ name: 'New Generic PLA', user_id: mockUser.id, print_profile_id: 'profile-a' })
     )
+  })
+
+  it('clones a filament from the Clone button inside the editor modal', async () => {
+    const profileA = { id: 'profile-a', name: 'Profile A', printer_model: 'A1 Mini' }
+    const communityFilament = {
+      id: 'filament-2', name: 'Community PLA', user_id: 'someone-else', print_profile_id: 'profile-a',
+      created_at: '2026-01-01', basic_settings: {}, temp_settings: {}, cooling_settings: {}, override_settings: {}, scarf_seam: {}, notes: '',
+    }
+    supabase.__chains.print_profiles._result = { data: [profileA], error: null }
+    supabase.__chains.filaments._result = { data: [communityFilament], error: null }
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Filaments')
+
+    const card = wrapper.findAll('.cursor-pointer').find((c) => c.text().includes('Community PLA'))
+    await card.trigger('click')
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    supabase.__chains.filaments._result = {
+      data: { ...communityFilament, id: 'filament-clone', name: 'Community PLA (Copy)', user_id: mockUser.id },
+      error: null,
+    }
+    const modal = wrapper.findComponent({ name: 'EditorModal' })
+    const cloneBtn = modal.findAll('button').find((b) => b.text().trim() === 'Clone')
+    await cloneBtn.trigger('click')
+    await flushPromises()
+
+    expect(supabase.__chains.filaments.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Community PLA (Copy)', user_id: mockUser.id })
+    )
+    window.confirm.mockRestore()
   })
 })
 

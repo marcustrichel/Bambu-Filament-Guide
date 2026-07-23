@@ -6,12 +6,13 @@ const props = defineProps({
   item: Object,          // The profile or filament object being edited
   type: String,          // 'profile' or 'filament'
   isOwner: Boolean,      // Read-only check
+  canClone: Boolean,     // Whether the viewer is signed in (can clone, own or community item)
   loading: Boolean,      // Saving state
   profiles: Array,       // Available profiles for linking
   printerModels: Array,  // Available printer model names for the Target dropdown
 });
 
-const emit = defineEmits(['close', 'save']);
+const emit = defineEmits(['close', 'save', 'clone']);
 
 // Create a local copy to avoid mutating props directly
 const editingItem = ref(null);
@@ -67,7 +68,15 @@ const handleModelChange = () => {
 };
 
 const handleSave = () => {
+  if (props.type === 'filament' && !editingItem.value.print_profile_id) {
+    alert('Please select a print profile for this filament before saving.');
+    return;
+  }
   emit('save', editingItem.value);
+};
+
+const handleClone = () => {
+  emit('clone', editingItem.value);
 };
 
 const handleClose = () => {
@@ -209,19 +218,29 @@ const handleClose = () => {
       </div>
 
       <!-- Footer -->
-      <div class="p-4 border-t border-gray-200 bg-white flex justify-end gap-3">
-        <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
-          Cancel
-        </button>
-        <button 
-          v-if="isOwner" 
-          @click="handleSave" 
-          class="px-6 py-2 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 shadow-sm flex items-center transition-colors"
-          :disabled="loading"
+      <div class="p-4 border-t border-gray-200 bg-white flex justify-between items-center">
+        <button
+          v-if="canClone && editingItem.id"
+          @click="handleClone"
+          class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
         >
-          <span v-if="loading" class="animate-spin mr-2">⟳</span>
-          Save Changes
+          Clone
         </button>
+        <div v-else></div>
+        <div class="flex gap-3">
+          <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+            Cancel
+          </button>
+          <button
+            v-if="isOwner"
+            @click="handleSave"
+            class="px-6 py-2 bg-emerald-600 text-white rounded font-medium hover:bg-emerald-700 shadow-sm flex items-center transition-colors"
+            :disabled="loading"
+          >
+            <span v-if="loading" class="animate-spin mr-2">⟳</span>
+            Save Changes
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -241,9 +260,9 @@ const handleClose = () => {
                 <input v-model="editingItem.name" :disabled="!isOwner" type="text" style="border:none; width:100%; outline:none; background:transparent; font-size:13px;">
             </div>
             <div class="flex items-center gap-2 text-xs text-gray-500">
-                <label class="font-bold uppercase">Profile:</label>
-                <select v-model="editingItem.print_profile_id" :disabled="!isOwner" class="content-select" style="width: 150px;">
-                    <option :value="null">None</option>
+                <label class="font-bold uppercase">Profile: *</label>
+                <select v-model="editingItem.print_profile_id" :disabled="!isOwner" class="content-select" style="width: 150px;" required>
+                    <option v-if="!editingItem.print_profile_id" :value="null" disabled>Select a profile…</option>
                     <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
                 </select>
             </div>
@@ -518,7 +537,16 @@ const handleClose = () => {
         </div>
 
         <!-- Footer (same controls as the profile editor) -->
-        <div class="p-4 border-t border-gray-200 bg-white flex justify-end gap-3">
+        <div class="p-4 border-t border-gray-200 bg-white flex justify-between items-center">
+          <button
+            v-if="canClone && editingItem.id"
+            @click="handleClone"
+            class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+          >
+            Clone
+          </button>
+          <div v-else></div>
+          <div class="flex gap-3">
           <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
             Cancel
           </button>
@@ -531,6 +559,7 @@ const handleClose = () => {
             <span v-if="loading" class="animate-spin mr-2">⟳</span>
             Save Changes
           </button>
+          </div>
         </div>
     </div>
   </div>

@@ -209,7 +209,7 @@ const createNewFilament = () => {
   const newF = {
     user_id: user.value.id,
     name: 'New Generic PLA',
-    print_profile_id: null,
+    print_profile_id: profiles.value[0]?.id ?? null,
     basic_settings: {
       filament_type: 'PLA',
       vendor: 'Overture',
@@ -328,15 +328,37 @@ const deletePrinterModel = async (model) => {
 
 const cloneProfile = async (original) => {
   if (!confirm(`Clone "${original.name}" to your library?`)) return;
-  const { id, created_at, user_id, ...data } = original;
+  const { id, created_at, updated_at, user_id, ...data } = original;
   data.user_id = user.value.id;
   data.name = `${original.name} (Copy)`;
-  
+
   const { data: inserted, error } = await supabase.from('print_profiles').insert(data).select().single();
-  if (!error) {
+  if (error) {
+    alert('Error cloning: ' + error.message);
+  } else {
     profiles.value.unshift(inserted);
     openEditor(inserted, 'profile');
   }
+};
+
+const cloneFilament = async (original) => {
+  if (!confirm(`Clone "${original.name}" to your library?`)) return;
+  const { id, created_at, updated_at, user_id, ...data } = original;
+  data.user_id = user.value.id;
+  data.name = `${original.name} (Copy)`;
+
+  const { data: inserted, error } = await supabase.from('filaments').insert(data).select().single();
+  if (error) {
+    alert('Error cloning: ' + error.message);
+  } else {
+    filaments.value.unshift(inserted);
+    openEditor(inserted, 'filament');
+  }
+};
+
+const handleClone = (item) => {
+  if (editorType.value === 'profile') cloneProfile(item);
+  else cloneFilament(item);
 };
 
 const handleSaveItem = async (itemToSave) => {
@@ -755,11 +777,13 @@ const handleSendUserPasswordReset = async ({ email }) => {
       :item="editingItem"
       :type="editorType"
       :isOwner="isOwner(editingItem)"
+      :canClone="!!user"
       :loading="loading"
       :profiles="profiles"
       :printerModels="printerModelNames"
       @close="editingItem = null"
       @save="handleSaveItem"
+      @clone="handleClone"
     />
 
     <PrinterModal

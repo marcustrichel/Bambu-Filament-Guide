@@ -59,9 +59,12 @@ Every profile shows its name, owner ("My Profile" or "Community"), target printe
 
 Open one of your own profiles and change any field, then **Save Changes**. The **Target** printer can only be set while creating a new profile — once saved, it's locked (so an existing profile's tuned settings can't get reset out from under it by accident). If you close the editor with unsaved changes, you'll be asked to confirm before they're discarded.
 
-### Forking (Copying) a Community Profile
+### Cloning a Profile
 
-Found someone else's profile you want to tweak? Click **Fork** on the card (visible when signed in, on profiles you don't own). This creates your own editable copy named "*(original name)* (Copy)" — the original is untouched.
+There are two ways to copy a profile — both create your own editable copy named "*(original name)* (Copy)" and leave the original untouched:
+
+- Click **Fork** on a card in the grid (visible when signed in, on profiles you don't own).
+- Click **Clone** in the bottom-left of the editor while viewing any saved profile (yours or someone else's) — handy if you've already opened it and want a variant. Clone isn't available until the profile has been saved at least once.
 
 ### Favoriting
 
@@ -77,12 +80,16 @@ Each filament card shows its name, vendor, first-layer nozzle temperature, and m
 
 1. Switch to the **Filaments** tab and click **+ New Filament**.
 2. The filament editor is organized into tabs: **Filament** (basic info + temperatures), **Cooling**, **Setting Overrides**, **Notes**, and more.
-3. Optionally link the filament to one of your print profiles using the **Profile** dropdown in the toolbar — this is just a reference, not required.
-4. Click the 💾 save icon in the toolbar to save.
+3. Pick one of your print profiles from the **Profile** dropdown in the toolbar — this is required, so if you haven't created a print profile yet, do that first. It defaults to your first profile so you don't have to touch it if that's the one you want.
+4. Click **Save Changes**.
 
 ### Editing
 
 Open a filament you own the same way as profiles — click its card, adjust values, save. Community filaments open read-only.
+
+### Cloning a Filament
+
+Click **Clone** in the bottom-left of the filament editor to make your own editable copy of any saved filament (yours or someone else's), named "*(original name)* (Copy)". Available once the filament has been saved at least once.
 
 ## Printers
 

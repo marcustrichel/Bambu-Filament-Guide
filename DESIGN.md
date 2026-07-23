@@ -109,19 +109,16 @@ The application relies on a relational database with JSONB columns for flexible 
     *   If Not Owner: Opens in Read-Only mode.
 2.  **Edit:** `EditorModal` renders fields dynamically based on `schemas.js`.
 3.  **Target Printer:** The profile editor's "Target" field is a dropdown sourced from the shared `printer_models` table (passed down as the `printerModels` prop — see Section 4.6), not free text. Changing it resets the **Speed** tab's fields to that model's built-in defaults (`PRINTER_MODEL_SPEED_DEFAULTS` in `schemas.js`, keyed by name) — e.g. X1 Carbon defaults to 10000 mm/s² acceleration vs. 5000 for A1 Mini; a community-added model with no entry in that map just keeps whatever speed values were already set. Other tabs (quality, strength, support, others) aren't model-dependent and are left untouched. Only editable while creating a new profile — locked once saved.
-4.  **Validation:** Inputs enforce types (number, color) and constraints (min values).
+4.  **Validation:** Inputs enforce types (number, color) and constraints (min values). Filaments additionally require a linked print profile (`print_profile_id`) — the toolbar's Profile selector has no "None" option, and `handleSave` in `EditorModal` blocks the save with an alert if it's unset. `createNewFilament` in `App.vue` defaults it to the first available profile so the visible selection always matches the actual bound value; if the user has no profiles yet, it's left unset and they must create one first.
 5.  **Save:**
     *   New Item: `INSERT` into DB.
     *   Existing Item: `UPDATE` row in DB.
 6.  **Unsaved Changes:** Closing the modal with modified data triggers a confirmation prompt.
 
 ### 4.4 Forking (Cloning)
-1.  User clicks "Fork" on a community profile.
-2.  App creates a deep copy of the object.
-3.  Removes `id` and `created_at`.
-4.  Sets `user_id` to current user.
-5.  Appends "(Copy)" to the name.
-6.  Inserts into DB as a new record.
+Two entry points do the same underlying `cloneProfile`/`cloneFilament`, both of which strip `id`/`created_at`/`updated_at`, set `user_id` to the current user, append " (Copy)" to the name, and insert as a new record:
+1.  **Fork button** on a profile card in the grid (visible for signed-in users on profiles/filaments they don't own) — clones the pristine, already-saved row.
+2.  **Clone button** in the `EditorModal` footer (profile and filament, both layouts) — visible whenever the viewer is signed in and the item being edited already has an `id` (not for a not-yet-saved new item). Clones whatever is currently in the form, including any unsaved edits, and emits a `clone` event with that data; `App.vue`'s `handleClone` dispatches to `cloneProfile` or `cloneFilament` based on `editorType`. After inserting, the modal switches to editing the new clone in place.
 
 ### 4.5 Printer Management
 1.  **View:** The Printers tab lists only the signed-in user's own printers (enforced by RLS — `printers` has no public-read policy). Signed-out users see a sign-in prompt instead of a table.
