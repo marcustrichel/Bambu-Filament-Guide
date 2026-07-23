@@ -1,6 +1,9 @@
-# bambu-manager
+# bambu-manager (BambuDB)
 
-This template should help get you started developing with Vue 3 in Vite.
+A web app for managing, sharing, and customizing 3D printing profiles, filament settings, and printers for Bambu Lab machines. Built with Vue 3 + Vite, backed by Supabase.
+
+- **Using the app?** See the [User Guide](USER_GUIDE.md).
+- **Working on the app?** See [DESIGN.md](DESIGN.md) for architecture, schema, and testing strategy.
 
 ## Recommended IDE Setup
 
@@ -36,3 +39,12 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Testing
+
+```sh
+npm test          # unit + integration tests (Vitest) — per-test report + test-results/unit-report.json
+npm run test:e2e  # end-to-end tests (Playwright) — per-test report + test-results/e2e-report.json + playwright-report/index.html
+```
+
+See [DESIGN.md § Testing Strategy](DESIGN.md#6-testing-strategy) for what each layer covers.

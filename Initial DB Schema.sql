@@ -112,6 +112,12 @@ create trigger print_profiles_updated_at
 create index idx_print_profiles_user_id      on print_profiles (user_id);
 create index idx_print_profiles_printer_model on print_profiles (printer_model);
 
+-- Printers reference their default print profile. Added here (rather than inline
+-- on the printers table above) because print_profiles must exist first for the FK.
+alter table printers add column default_print_profile_id uuid references print_profiles (id) on delete set null;
+
+create index idx_printers_default_print_profile_id on printers (default_print_profile_id);
+
 
 -- FILAMENTS (Material/chemistry settings — public read, owner write)
 create table filaments (

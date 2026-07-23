@@ -92,4 +92,21 @@ describe('App.vue — smoke tests', () => {
     await signInBtn.trigger('click')
     expect(wrapper.findComponent({ name: 'AuthModal' }).props('isOpen')).toBe(true)
   })
+
+  it('does not show New Printer button when not authenticated', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+    const printersBtn = wrapper.findAll('button').find(b => b.text().includes('Printers'))
+    await printersBtn.trigger('click')
+    const newPrinterBtn = wrapper.findAll('button').find(b => b.text().includes('New Printer'))
+    expect(newPrinterBtn).toBeUndefined()
+  })
+
+  it('shows a placeholder message when there are no printers', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+    const printersBtn = wrapper.findAll('button').find(b => b.text().includes('Printers'))
+    await printersBtn.trigger('click')
+    expect(wrapper.text()).toContain('Sign in to manage your printers.')
+  })
 })

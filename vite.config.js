@@ -19,5 +19,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.js'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    reporters: ['verbose', 'json'],
+    outputFile: { json: './test-results/unit-report.json' },
   },
 })

@@ -88,18 +88,9 @@ const handleClose = () => {
               placeholder="Enter Name..."
             >
             <!-- Printer Selector (Profile Only) -->
-            <div v-if="type === 'profile'" class="flex items-center gap-2 bg-white px-2 py-1 rounded border border-gray-200">
+            <div class="flex items-center gap-2 bg-white px-2 py-1 rounded border border-gray-200">
                <label class="text-xs text-gray-500 font-bold uppercase">Target:</label>
                <span class="text-sm font-bold text-gray-800">{{ editingItem.printer_model }}</span>
-            </div>
-
-            <!-- Profile Selector (Filament Only) -->
-            <div v-if="type === 'filament'" class="flex items-center gap-2 bg-white px-2 py-1 rounded border border-gray-200">
-               <label class="text-xs text-gray-500 font-bold uppercase">Profile:</label>
-               <select v-model="editingItem.print_profile_id" :disabled="!isOwner" class="text-sm font-medium bg-transparent outline-none cursor-pointer max-w-[150px]">
-                   <option :value="null">None</option>
-                   <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
-               </select>
             </div>
           </div>
         </div>
@@ -235,6 +226,13 @@ const handleClose = () => {
             <div class="dropdown-container">
                 <!-- Using an input that looks like the dropdown for name editing -->
                 <input v-model="editingItem.name" :disabled="!isOwner" type="text" style="border:none; width:100%; outline:none; background:transparent; font-size:13px;">
+            </div>
+            <div class="flex items-center gap-2 text-xs text-gray-500">
+                <label class="font-bold uppercase">Profile:</label>
+                <select v-model="editingItem.print_profile_id" :disabled="!isOwner" class="content-select" style="width: 150px;">
+                    <option :value="null">None</option>
+                    <option v-for="p in profiles" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
             </div>
             <span class="toolbar-icon" @click="handleSave" title="Save">💾</span>
             <span class="toolbar-icon">🔍</span>

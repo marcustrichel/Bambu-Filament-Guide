@@ -2,7 +2,9 @@
 import { ref, onMounted } from 'vue';
 import { supabase } from '@/lib/supabase';
 import AuthModal from '@/components/AuthModal.vue';
+import ResetPasswordModal from '@/components/ResetPasswordModal.vue';
 import EditorModal from '@/components/EditorModal.vue';
+import PrinterModal from '@/components/PrinterModal.vue';
 
 // --- State ---
 const user = ref(null);
@@ -14,7 +16,9 @@ const favorites = ref([]);
 const currentView = ref('profiles');
 const editingItem = ref(null);
 const editorType = ref('profile'); // 'profile' or 'filament'
+const editingPrinter = ref(null);
 const showAuthModal = ref(false);
+const showResetPasswordModal = ref(false);
 const loading = ref(false);
 
 // --- Lifecycle ---
@@ -24,7 +28,11 @@ onMounted(() => {
     if (user.value) loadUserData();
   });
 
-  supabase.auth.onAuthStateChange((_event, session) => {
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      showResetPasswordModal.value = true;
+      return;
+    }
     user.value = session?.user || null;
     if (user.value) loadUserData();
   });
@@ -73,6 +81,26 @@ const handleAuth = async ({ mode, email, password }) => {
   
   if (error) alert(error.message);
   else showAuthModal.value = false;
+};
+
+const handleForgotPassword = async ({ email }) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+  if (error) alert(error.message);
+  else {
+    alert('Password reset email sent! Check your inbox for a link.');
+    showAuthModal.value = false;
+  }
+};
+
+const handleResetPassword = async ({ password }) => {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) alert(error.message);
+  else {
+    alert('Password updated successfully.');
+    showResetPasswordModal.value = false;
+  }
 };
 
 const signOut = async () => {
@@ -194,6 +222,18 @@ const createNewFilament = () => {
   openEditor(newF, 'filament');
 };
 
+const createNewPrinter = () => {
+  editingPrinter.value = {
+    user_id: user.value.id,
+    name: 'New Printer',
+    model: 'A1 Mini',
+    nozzle_diameter: 0.4,
+    bed_size_x: 180,
+    bed_size_y: 180,
+    default_print_profile_id: null,
+  };
+};
+
 const cloneProfile = async (original) => {
   if (!confirm(`Clone "${original.name}" to your library?`)) return;
   const { id, created_at, user_id, ...data } = original;
@@ -252,6 +292,35 @@ const handleSaveItem = async (itemToSave) => {
     if (idx >= 0) targetList.value[idx] = res.data;
     else targetList.value.unshift(res.data);
     editingItem.value = null; // Close Modal
+  }
+  loading.value = false;
+};
+
+const handleSavePrinter = async (printerToSave) => {
+  loading.value = true;
+  const payload = {
+    name: printerToSave.name,
+    model: printerToSave.model,
+    nozzle_diameter: printerToSave.nozzle_diameter,
+    bed_size_x: printerToSave.bed_size_x,
+    bed_size_y: printerToSave.bed_size_y,
+    default_print_profile_id: printerToSave.default_print_profile_id,
+  };
+
+  let res;
+  if (printerToSave.id) {
+    res = await supabase.from('printers').update(payload).eq('id', printerToSave.id).select().single();
+  } else {
+    res = await supabase.from('printers').insert({ user_id: printerToSave.user_id, ...payload }).select().single();
+  }
+
+  if (res.error) {
+    alert('Error saving: ' + res.error.message);
+  } else {
+    const idx = printers.value.findIndex(p => p.id === res.data.id);
+    if (idx >= 0) printers.value[idx] = res.data;
+    else printers.value.unshift(res.data);
+    editingPrinter.value = null;
   }
   loading.value = false;
 };
@@ -350,7 +419,10 @@ const handleSaveItem = async (itemToSave) => {
 
         <!-- PRINTERS -->
         <div v-if="currentView === 'printers'">
-          <h2 class="text-2xl font-bold text-gray-800 mb-6">Printers</h2>
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Printers</h2>
+            <button v-if="user" @click="createNewPrinter" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-sm flex items-center gap-2"><span>+</span> New Printer</button>
+          </div>
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table class="w-full text-left text-sm text-gray-600">
               <thead class="bg-gray-50 border-b border-gray-200">
@@ -359,17 +431,24 @@ const handleSaveItem = async (itemToSave) => {
                   <th class="p-4 font-semibold text-gray-900">Model</th>
                   <th class="p-4 font-semibold text-gray-900">Bed Size</th>
                   <th class="p-4 font-semibold text-gray-900">Nozzle</th>
+                  <th class="p-4 font-semibold text-gray-900">Default Profile</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr v-for="printer in printers" :key="printer.id" class="hover:bg-gray-50">
+                <tr v-for="printer in printers" :key="printer.id" @click="editingPrinter = printer" class="hover:bg-gray-50 cursor-pointer">
                   <td class="p-4 font-medium text-gray-900">{{ printer.name }}</td>
                   <td class="p-4"><span class="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-bold">{{ printer.model }}</span></td>
                   <td class="p-4">{{ printer.bed_size_x }} x {{ printer.bed_size_y }} mm</td>
                   <td class="p-4">{{ printer.nozzle_diameter }} mm</td>
+                  <td class="p-4">
+                    {{ profiles.find(p => p.id === printer.default_print_profile_id)?.name || '—' }}
+                  </td>
                 </tr>
               </tbody>
             </table>
+            <div v-if="printers.length === 0" class="p-8 text-center text-gray-400 text-sm">
+              {{ user ? 'No printers yet — add one to get started.' : 'Sign in to manage your printers.' }}
+            </div>
           </div>
         </div>
 
@@ -377,21 +456,35 @@ const handleSaveItem = async (itemToSave) => {
     </div>
 
     <!-- Modals -->
-    <AuthModal 
-      :isOpen="showAuthModal" 
-      @close="showAuthModal = false" 
-      @authenticate="handleAuth" 
+    <AuthModal
+      :isOpen="showAuthModal"
+      @close="showAuthModal = false"
+      @authenticate="handleAuth"
+      @forgot-password="handleForgotPassword"
     />
 
-    <EditorModal 
+    <ResetPasswordModal
+      :isOpen="showResetPasswordModal"
+      @submit="handleResetPassword"
+    />
+
+    <EditorModal
       v-if="editingItem"
-      :item="editingItem" 
+      :item="editingItem"
       :type="editorType"
       :isOwner="isOwner(editingItem)"
       :loading="loading"
       :profiles="profiles"
       @close="editingItem = null"
       @save="handleSaveItem"
+    />
+
+    <PrinterModal
+      :printer="editingPrinter"
+      :profiles="profiles"
+      :loading="loading"
+      @close="editingPrinter = null"
+      @save="handleSavePrinter"
     />
 
   </div>

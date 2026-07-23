@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import EditorModal from '@/components/EditorModal.vue'
 
@@ -119,6 +119,29 @@ describe('EditorModal — profile type', () => {
   })
 })
 
+describe('EditorModal — unsaved changes guard', () => {
+  it('asks for confirmation before closing when the owner has unsaved changes', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const wrapper = mountProfile()
+    await wrapper.find('input[placeholder="Enter Name..."]').setValue('Changed Name')
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')
+    await cancelBtn.trigger('click')
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(wrapper.emitted('close')).toBeFalsy() // user declined the confirm
+    confirmSpy.mockRestore()
+  })
+
+  it('closes without prompting when there are no unsaved changes', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm')
+    const wrapper = mountProfile()
+    const cancelBtn = wrapper.findAll('button').find(b => b.text().trim() === 'Cancel')
+    await cancelBtn.trigger('click')
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(wrapper.emitted('close')).toBeTruthy()
+    confirmSpy.mockRestore()
+  })
+})
+
 // --- Filament editor ---
 
 describe('EditorModal — filament type', () => {
@@ -181,6 +204,17 @@ describe('EditorModal — filament type', () => {
     const notesTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Notes')
     await notesTab.trigger('click')
     expect(wrapper.find('textarea.notes-area').exists()).toBe(true)
+  })
+
+  it('lets the owner link the filament to a print profile via the header selector', async () => {
+    const profiles = [{ id: 'profile-1', name: 'My Profile' }, { id: 'profile-2', name: 'Other Profile' }]
+    const wrapper = mountFilament({ profiles })
+    const linkSelect = wrapper.find('select')
+    expect(linkSelect.exists()).toBe(true)
+    await linkSelect.setValue('profile-2')
+    const saveBtn = wrapper.find('.toolbar-icon[title="Save"]')
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0]).toMatchObject({ print_profile_id: 'profile-2' })
   })
 
   it('Advanced tab still shows placeholder text', async () => {
