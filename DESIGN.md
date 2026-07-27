@@ -204,6 +204,8 @@ Typing a non-empty query replaces whatever the sidebar nav currently shows with 
 
 `supabase/functions/update-user-email/` — the one server-side function this app has, and it exists solely because changing *another user's* Auth email requires the Admin API (`service_role` key), which must never reach the browser.
 
+Full API documentation for every edge function lives outside this doc and must stay in sync with the code: [`API.md`](API.md) (human-readable) and [`supabase/functions/openapi.yaml`](supabase/functions/openapi.yaml) (OpenAPI 3.0 spec).
+
 *   **Auth:** the caller's own Supabase session JWT (forwarded automatically as the `Authorization` header) identifies who's calling; a second, `service_role`-backed client (server-side only, never exposed) does the actual privileged lookup/action once permission checks pass.
 *   **Permission check:** looks up the caller's `user_profiles.role` — rejects unless `elevated` or `admin`; if `elevated`, additionally rejects unless the target user's current role is `standard`.
 *   **Action:** `auth.admin.updateUserById(targetUserId, { email: newEmail })`. `user_profiles.email` then catches up automatically via the `sync_user_profile_email` trigger (Section 3) — the function doesn't touch that table itself.

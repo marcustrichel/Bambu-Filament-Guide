@@ -4,6 +4,7 @@ A web app for managing, sharing, and customizing 3D printing profiles, filament 
 
 - **Using the app?** See the [User Guide](USER_GUIDE.md). Live at [draconas.org](https://draconas.org).
 - **Working on the app?** See [DESIGN.md](DESIGN.md) for architecture, schema, and testing strategy.
+- **Calling an edge function?** See [API.md](API.md) for the human-readable docs, or [supabase/functions/openapi.yaml](supabase/functions/openapi.yaml) for the OpenAPI spec.
 - **Deploying it?** See [DEPLOYMENT.md](DEPLOYMENT.md) for the GitHub Pages + custom domain setup and security notes.
 
 ## Recommended IDE Setup

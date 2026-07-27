@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: Bambu Filament Guide — Edge Functions API
+  description: >
+    Supabase Edge Functions used by the Bambu Filament Guide app. These are
+    the only server-side endpoints in the app (everything else is direct
+    PostgREST access to Supabase tables, governed by RLS) — each one exists
+    because it needs the service_role key, which must never reach the
+    browser. See DESIGN.md Section 6 for the underlying design rationale.
+  version: 1.0.0
+servers:
+  - url: https://ohzosdwdzshlciphtyuw.supabase.co/functions/v1
+    description: Production Supabase project
+security:
+  - bearerAuth: []
+paths:
+  /update-user-email:
+    post:
+      operationId: updateUserEmail
+      summary: Change another user's Supabase Auth email address
+      description: >
+        Changes the Auth email of a target user. Requires the caller to hold
+        the `elevated` or `admin` role in `user_profiles`; `elevated` callers
+        may only target users whose current role is `standard`. This is the
+        one action in the access-level feature that genuinely requires the
+        Admin API, since every other user_profiles change is governed by RLS
+        alone.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetUserId, newEmail]
+              properties:
+                targetUserId:
+                  type: string
+                  format: uuid
+                  description: The `id` (auth.users.id / user_profiles.id) of the user whose email is being changed.
+                newEmail:
+                  type: string
+                  format: email
+                  description: The new email address to set on the target user's Auth account.
+      responses:
+        '200':
+          description: Email updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                        format: email
+        '400':
+          description: Malformed request — invalid JSON body, missing required fields, or the Admin API rejected the new email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing Authorization header, or the caller's session JWT is invalid/expired.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: >
+            Caller's user_profiles row is missing, their account is disabled,
+            their role is `standard` (neither `elevated` nor `admin`), or
+            they are `elevated` attempting to target a user who is not
+            currently `standard`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The target user's `user_profiles` row was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed — only POST (and OPTIONS for CORS preflight) are supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    options:
+      operationId: updateUserEmailPreflight
+      summary: CORS preflight
+      responses:
+        '200':
+          description: CORS headers returned, no body.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The caller's own Supabase Auth session access token.
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
