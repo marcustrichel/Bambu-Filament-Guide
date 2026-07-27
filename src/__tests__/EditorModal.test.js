@@ -21,11 +21,11 @@ const filamentItem = {
   name: 'Test PLA',
   user_id: 'user-1',
   print_profile_id: 'profile-1',
-  basic_settings: { filament_type: 'PLA', vendor: 'Overture', color: '#ff0000', diameter: 1.75, flow_ratio: 0.98, density: 1.22, shrinkage: 100, velocity_adaptation: 1, price: 24.52, softening_temp: 45, prime_vol_filament_change: 45, prime_vol_hotend_change: 45, ramming_len_extruder_change: 4.5, ramming_len_hotend_change: 4.5, travel_time_ramming_extruder: 250, travel_time_ramming_hotend: 250, precool_temp_extruder: 140, precool_temp_hotend: 140 },
+  basic_settings: { filament_type: 'PLA', vendor: 'Overture', color: '#ff0000', metal_stickiness: 'None', diameter: 1.75, flow_ratio: 0.98, density: 1.22, shrinkage: 100, velocity_adaptation: 1, price: 24.52, softening_temp: 45, prime_vol_filament_change: 45, prime_vol_hotend_change: 45, ramming_len_extruder_change: 4.5, ramming_len_hotend_change: 4.5, travel_time_ramming_extruder: 0, travel_time_ramming_hotend: 0, precool_temp_extruder: 0, precool_temp_hotend: 0, idle_temp: 0 },
   temp_settings: { nozzle_temp_min: 190, nozzle_temp_max: 230, cool_plate_super_initial: 35, cool_plate_super_other: 35, cool_plate_initial: 35, cool_plate_other: 35, eng_plate_initial: 55, eng_plate_other: 55, smooth_pei_initial: 55, smooth_pei_other: 55, textured_pei_initial: 55, textured_pei_other: 55, first_layer_nozzle: 220, other_layers_nozzle: 220, vitrification_temp: 60 },
   cooling_settings: { min_fan_speed: 100, max_fan_speed: 100, min_layer_time: 8, fan_always_on: true, aux_fan_speed: 70, no_cooling_for_first_layer: true, slow_down_for_cooling: true, slow_print_speed: 50, force_cooling_for_overhangs: false },
   override_settings: { adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12, retraction_length: 0.8, z_hop: 0.4, pressure_advance: 0.02, wipe_distance: 1.0 },
-  scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 0, scarf_slope_gap: 10, scarf_length: 5 },
+  scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 10, scarf_slope_gap: 0, scarf_length: 5 },
   notes: '',
 }
 
@@ -220,6 +220,55 @@ describe('EditorModal — filament type', () => {
   it('Filament tab (default) shows basic information section', () => {
     const wrapper = mountFilament()
     expect(wrapper.text()).toContain('Basic information')
+  })
+
+  it('Filament tab shows all Basic information fields from the Bambu Studio reference layout', () => {
+    const wrapper = mountFilament()
+    const text = wrapper.text()
+    ;[
+      'Metal stickiness', 'Velocity Adaptation Factor', 'Price', 'Softening temperature',
+      'Filament prime volume', 'Filament ramming length', 'Travel time after ramming',
+      'Precooling target temperature', 'Idle temperature',
+    ].forEach(label => expect(text).toContain(label))
+  })
+
+  it('Filament tab shows all print temperature plate rows', () => {
+    const wrapper = mountFilament()
+    const text = wrapper.text()
+    ;['Cool Plate SuperTack', 'Cool Plate', 'Engineering Plate', 'Smooth PEI Plate / High Temp Plate', 'Textured PEI Plate', 'Vitrification temperature'].forEach(label => {
+      expect(text).toContain(label)
+    })
+  })
+
+  it('Filament tab shows Ramming volumetric speed alongside Max volumetric speed', () => {
+    const wrapper = mountFilament()
+    expect(wrapper.text()).toContain('Ramming volumetric speed')
+  })
+
+  it('Filament tab shows Scarf start height and Scarf slope gap', () => {
+    const wrapper = mountFilament()
+    const text = wrapper.text()
+    expect(text).toContain('Scarf start height')
+    expect(text).toContain('Scarf slope gap')
+  })
+
+  it('lets the owner change Metal stickiness, and the change is included on save', async () => {
+    const wrapper = mountFilament()
+    const selects = wrapper.findAll('select.content-select')
+    const metalSelect = selects.find(s => s.findAll('option').some(o => o.text() === 'Medium'))
+    expect(metalSelect).not.toBeUndefined()
+    await metalSelect.setValue('Medium')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].basic_settings.metal_stickiness).toBe('Medium')
+  })
+
+  it('disables Metal stickiness when isOwner is false', () => {
+    const wrapper = mountFilament({ isOwner: false })
+    const selects = wrapper.findAll('select.content-select')
+    const metalSelect = selects.find(s => s.findAll('option').some(o => o.text() === 'Medium'))
+    expect(metalSelect.attributes('disabled')).toBeDefined()
   })
 
   it('Cooling tab shows fan and cooling fields', async () => {

@@ -315,6 +315,12 @@ const handleClose = () => {
                         </div>
                     </div>
                     <div class="row">
+                        <div class="label">Metal stickiness</div>
+                        <select v-model="editingItem.basic_settings.metal_stickiness" :disabled="!isOwner" class="content-select">
+                            <option v-for="opt in ['None', 'Low', 'Medium', 'High']" :key="opt" :value="opt">{{ opt }}</option>
+                        </select>
+                    </div>
+                    <div class="row">
                         <div class="label">Flow ratio</div>
                         <input type="number" v-model.number="editingItem.basic_settings.flow_ratio" :disabled="!isOwner" step="0.01">
                     </div>
@@ -330,6 +336,17 @@ const handleClose = () => {
                         <div class="input-group">
                             <input type="number" v-model.number="editingItem.basic_settings.shrinkage" :disabled="!isOwner">
                             <span class="unit">%</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="label">Velocity Adaptation Factor</div>
+                        <input type="number" v-model.number="editingItem.basic_settings.velocity_adaptation" :disabled="!isOwner" step="0.01">
+                    </div>
+                    <div class="row">
+                        <div class="label">Price</div>
+                        <div class="input-group">
+                            <input type="number" v-model.number="editingItem.basic_settings.price" :disabled="!isOwner" step="0.01">
+                            <span class="unit">$/kg</span>
                         </div>
                     </div>
                     <div class="row">
@@ -354,6 +371,62 @@ const handleClose = () => {
                                 <input type="number" v-model.number="editingItem.basic_settings.prime_vol_hotend_change" :disabled="!isOwner" class="small-num">
                                 <span class="unit">mm³</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="height: auto; align-items: flex-start; margin-top: 10px;">
+                        <div class="label">Filament ramming length</div>
+                        <div class="dual-inputs">
+                            <div class="sub-group">
+                                <div class="sub-label">Extruder change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.ramming_len_extruder_change" :disabled="!isOwner" class="small-num">
+                                <span class="unit">mm</span>
+                            </div>
+                            <div class="sub-group">
+                                <div class="sub-label">Hotend change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.ramming_len_hotend_change" :disabled="!isOwner" class="small-num">
+                                <span class="unit">mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="height: auto; align-items: flex-start; margin-top: 10px;">
+                        <div class="label">Travel time after ramming</div>
+                        <div class="dual-inputs">
+                            <div class="sub-group">
+                                <div class="sub-label">Extruder change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.travel_time_ramming_extruder" :disabled="!isOwner" step="0.1" class="small-num">
+                                <span class="unit">s</span>
+                            </div>
+                            <div class="sub-group">
+                                <div class="sub-label">Hotend change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.travel_time_ramming_hotend" :disabled="!isOwner" step="0.1" class="small-num">
+                                <span class="unit">s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" style="height: auto; align-items: flex-start; margin-top: 10px;">
+                        <div class="label">Precooling target temperature</div>
+                        <div class="dual-inputs">
+                            <div class="sub-group">
+                                <div class="sub-label">Extruder change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.precool_temp_extruder" :disabled="!isOwner" class="small-num">
+                                <span class="unit">°C</span>
+                            </div>
+                            <div class="sub-group">
+                                <div class="sub-label">Hotend change</div>
+                                <input type="number" v-model.number="editingItem.basic_settings.precool_temp_hotend" :disabled="!isOwner" class="small-num">
+                                <span class="unit">°C</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Idle temperature (AMS)</div>
+                        <div class="input-group">
+                            <input type="number" v-model.number="editingItem.basic_settings.idle_temp" :disabled="!isOwner" class="small-num">
+                            <span class="unit">°C</span>
                         </div>
                     </div>
 
@@ -389,6 +462,30 @@ const handleClose = () => {
                     </div>
 
                     <div class="row">
+                        <div class="label">Cool Plate</div>
+                        <div class="temp-pair">
+                            <div class="pair-item"><span class="pair-label">Initial layer</span> <input type="number" v-model.number="editingItem.temp_settings.cool_plate_initial" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                            <div class="pair-item"><span class="pair-label">Other layers</span> <input type="number" v-model.number="editingItem.temp_settings.cool_plate_other" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Engineering Plate</div>
+                        <div class="temp-pair">
+                            <div class="pair-item"><span class="pair-label">Initial layer</span> <input type="number" v-model.number="editingItem.temp_settings.eng_plate_initial" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                            <div class="pair-item"><span class="pair-label">Other layers</span> <input type="number" v-model.number="editingItem.temp_settings.eng_plate_other" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Smooth PEI Plate / High Temp Plate</div>
+                        <div class="temp-pair">
+                            <div class="pair-item"><span class="pair-label">Initial layer</span> <input type="number" v-model.number="editingItem.temp_settings.smooth_pei_initial" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                            <div class="pair-item"><span class="pair-label">Other layers</span> <input type="number" v-model.number="editingItem.temp_settings.smooth_pei_other" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
                         <div class="label">Textured PEI Plate</div>
                         <div class="temp-pair">
                             <div class="pair-item"><span class="pair-label">Initial layer</span> <input type="number" v-model.number="editingItem.temp_settings.textured_pei_initial" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
@@ -401,6 +498,14 @@ const handleClose = () => {
                         <div class="temp-pair">
                             <div class="pair-item"><span class="pair-label">Initial layer</span> <input type="number" v-model.number="editingItem.temp_settings.first_layer_nozzle" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
                             <div class="pair-item"><span class="pair-label">Other layers</span> <input type="number" v-model.number="editingItem.temp_settings.other_layers_nozzle" :disabled="!isOwner" class="small-num"> <span class="unit">°C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="label">Vitrification temperature</div>
+                        <div class="input-group">
+                            <input type="number" v-model.number="editingItem.temp_settings.vitrification_temp" :disabled="!isOwner" class="small-num">
+                            <span class="unit">°C</span>
                         </div>
                     </div>
                 </section>
@@ -421,6 +526,21 @@ const handleClose = () => {
                             <span class="unit">mm³/s</span>
                         </div>
                     </div>
+                    <div class="row" style="height: auto; align-items: flex-start; margin-top: 10px;">
+                        <div class="label">Ramming volumetric speed</div>
+                        <div class="dual-inputs">
+                            <div class="sub-group">
+                                <div class="sub-label">Extruder change</div>
+                                <input type="number" v-model.number="editingItem.override_settings.ramming_vol_extruder_change" :disabled="!isOwner" class="small-num">
+                                <span class="unit">mm³/s</span>
+                            </div>
+                            <div class="sub-group">
+                                <div class="sub-label">Hotend change</div>
+                                <input type="number" v-model.number="editingItem.override_settings.ramming_vol_hotend_change" :disabled="!isOwner" class="small-num">
+                                <span class="unit">mm³/s</span>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- Scarf Seam -->
@@ -433,6 +553,20 @@ const handleClose = () => {
                         <select v-model="editingItem.scarf_seam.scarf_seam_type" :disabled="!isOwner" class="content-select">
                             <option v-for="opt in ['none', 'outer', 'inner', 'both']" :key="opt" :value="opt">{{ opt }}</option>
                         </select>
+                    </div>
+                    <div class="row">
+                        <div class="label">Scarf start height</div>
+                        <div class="input-group">
+                            <input type="number" v-model.number="editingItem.scarf_seam.scarf_start_height" :disabled="!isOwner">
+                            <span class="unit">mm/%</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="label">Scarf slope gap</div>
+                        <div class="input-group">
+                            <input type="number" v-model.number="editingItem.scarf_seam.scarf_slope_gap" :disabled="!isOwner">
+                            <span class="unit">mm/%</span>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="label">Scarf length</div>

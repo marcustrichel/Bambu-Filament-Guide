@@ -72,14 +72,15 @@ The application relies on a relational database with JSONB columns for flexible 
 ### Configuration Objects (JSONB Structures)
 
 #### Filament Settings
-*   **Basic:** Type (Default: PLA), Vendor (Default: Overture), Color (Default: #000000), Diameter (Default: 1.75mm), Flow Ratio (Default: 0.98), Density (Default: 1.22 g/cm³), Shrinkage (Default: 100%), Velocity Adaptation (Default: 1), Price (Default: 24.52), Softening Temp (Default: 45°C).
-*   **Temperatures:** Nozzle (Min/Max, First/Other), Bed (Cool/Eng/PEI plates), Vitrification.
+Mirrors the full "Filament" tab of Bambu Studio's filament editor (see `src/constants/schemas.js` `filamentSchema` for the authoritative field list/defaults).
+*   **Basic:** Type (Default: PLA), Vendor (Default: Overture), Color (Default: #000000), Metal Stickiness (None/Low/Medium/High, Default: None), Diameter (Default: 1.75mm), Flow Ratio (Default: 0.98), Density (Default: 1.22 g/cm³), Shrinkage (Default: 100%), Velocity Adaptation (Default: 1), Price (Default: 24.52 $/kg), Softening Temp (Default: 45°C), Filament Prime Volume (Filament/Hotend change), Filament Ramming Length (Extruder/Hotend change), Travel Time After Ramming (Extruder/Hotend change, seconds), Precooling Target Temperature (Extruder/Hotend change), Idle Temperature (AMS).
+*   **Temperatures:** Nozzle (Min/Max, First/Other layer), Bed per plate type (Cool Plate SuperTack, Cool Plate, Engineering Plate, Smooth PEI/High Temp Plate, Textured PEI Plate — each Initial/Other layer), Vitrification.
 *   **Cooling:** Fan speeds (Min/Max/Aux), Layer times.
-*   **Overrides:** Max Volumetric Speed, Retraction, Z-Hop.
+*   **Overrides:** Adaptive/Max Volumetric Speed, Ramming Volumetric Speed (Extruder/Hotend change), Retraction, Z-Hop, Pressure Advance, Wipe Distance.
 *   **Scarf Seam:**
     *   `scarf_seam_type`: None, Outer, Inner, Both.
-    *   `scarf_start_height`: Height to start scarf seam.
-    *   `scarf_slope_gap`: Gap in slope.
+    *   `scarf_start_height`: Height to start the scarf seam, as % of layer height (Default: 10%).
+    *   `scarf_slope_gap`: Gap in the slope of the scarf seam (Default: 0%).
     *   `scarf_length`: Overlap length.
 
 #### Print Profile Settings
