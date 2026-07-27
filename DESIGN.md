@@ -9,6 +9,7 @@ A web application to manage, share, and customize 3D printing profiles and filam
 *   **Backend:** Supabase (PostgreSQL Database, Authentication).
 *   **State Management:** Reactive Vue refs in `App.vue`.
 *   **Testing:** Vitest + Vue Test Utils for component/unit tests and App-level integration tests (mocked Supabase client); Playwright for end-to-end tests that drive the real built app in a browser against a mocked Supabase network layer (see Section 7).
+*   **Hosting:** Static build on GitHub Pages, custom domain `draconas.org`, deployed via GitHub Actions on merge to `main` — see `DEPLOYMENT.md` for the full setup and security notes.
 
 ## 3. Database Schema
 The application relies on a relational database with JSONB columns for flexible setting storage.
