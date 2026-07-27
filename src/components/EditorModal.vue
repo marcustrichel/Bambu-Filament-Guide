@@ -267,29 +267,18 @@ const handleClose = () => {
                 </select>
             </div>
             <span class="toolbar-icon">🔍</span>
-            <div class="advanced-toggle">
-                <span>Advanced</span>
-                <label class="toggle-switch">
-                    <input type="checkbox" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
         </div>
 
         <div class="tabs">
-            <div 
-                v-for="tab in tabs" 
+            <div
+                v-for="tab in tabs"
                 :key="tab.key"
-                class="tab" 
+                class="tab"
                 :class="{ active: activeTab === tab.key }"
                 @click="activeTab = tab.key"
             >
                 {{ tab.label }}
             </div>
-        </div>
-
-        <div class="wiki-row">
-            <span>📖 Wiki</span>
         </div>
 
         <!-- Main Content -->
@@ -657,44 +646,6 @@ const handleClose = () => {
         font-size: 16px;
     }
 
-    .advanced-toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-    }
-
-    .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 32px;
-        height: 18px;
-    }
-
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-
-    .slider {
-        position: absolute;
-        cursor: pointer;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #ccc;
-        transition: .2s;
-        border-radius: 18px;
-    }
-
-    .slider:before {
-        position: absolute;
-        content: "";
-        height: 14px; width: 14px;
-        left: 2px; bottom: 2px;
-        background-color: white;
-        transition: .2s;
-        border-radius: 50%;
-    }
-
-    input:checked + .slider { background-color: var(--accent-green); }
-    input:checked + .slider:before { transform: translateX(14px); }
-
     /* Tabs */
     .tabs {
         display: flex;
@@ -713,15 +664,6 @@ const handleClose = () => {
     .tab.active {
         color: var(--accent-green);
         border-bottom-color: var(--accent-green);
-    }
-
-    .wiki-row {
-        padding: 8px 16px;
-        font-size: 12px;
-        color: var(--accent-blue);
-        display: flex;
-        align-items: center;
-        gap: 4px;
     }
 
     /* Scrollable Content — vertical only, never horizontal */
@@ -882,6 +824,6 @@ const handleClose = () => {
 
         .toolbar { flex-wrap: wrap; }
         .dropdown-container { flex-basis: 100%; }
-        .toolbar-icon, .advanced-toggle { display: none; } /* decorative only, not worth the space on small screens */
+        .toolbar-icon { display: none; } /* decorative only, not worth the space on small screens */
     }
 </style>
