@@ -57,6 +57,24 @@ test('blocks saving a filament with no linked print profile', async ({ page }) =
   await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible();
 });
 
+test('sets Metal stickiness on a new filament and saves it', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+  await page.getByRole('button', { name: 'New Filament' }).click();
+
+  await page.getByText('Metal stickiness').locator('..').getByRole('combobox').selectOption('High');
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/filaments') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.basic_settings.metal_stickiness).toBe('High');
+});
+
 test('clones a community filament from the Clone button inside the editor', async ({ page }) => {
   await mockSupabase(page, { profiles: [profileA], filaments: [communityFilament] });
   await page.goto('/');

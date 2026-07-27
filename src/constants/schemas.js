@@ -60,6 +60,7 @@ export const filamentSchema = {
         { key: 'filament_type', label: 'Filament Type', type: 'select', options: ['PLA', 'PETG', 'ABS', 'ASA', 'PA', 'PC', 'TPU', 'PET', 'PVA', 'HIPS', 'PPS', 'PPA', 'PEI', 'PEEK', 'PEKK'], width: 'w-full', default: 'PLA', desc: "Type of filament, e.g., PLA, PETG, ABS.", createOnly: true },
         { key: 'vendor', label: 'Vendor', type: 'text', width: 'w-full', default: 'Overture', desc: "The manufacturer of the filament." },
         { key: 'color', label: 'Default color', type: 'color', width: 'w-full', default: '#000000', desc: "The color of the filament." },
+        { key: 'metal_stickiness', label: 'Metal stickiness', type: 'select', options: ['None', 'Low', 'Medium', 'High'], width: 'w-full', default: 'None', desc: "How much the material tends to adhere to metal nozzle/hotend surfaces, relevant for metal-fill, carbon-fill, or conductive filaments." },
         { key: 'diameter', label: 'Diameter', type: 'number', step: 0.01, min: 0.01, suffix: 'mm', width: 'w-32', default: 1.75, desc: "The diameter of the filament, typically 1.75mm. Must be positive." },
         { key: 'flow_ratio', label: 'Flow Ratio', type: 'number', step: 0.01, width: 'w-32', default: 0.98, desc: "A multiplier for the amount of filament extruded. Used to calibrate for under or over-extrusion. Default is 0.98 for many Bambu filaments." },
         { key: 'density', label: 'Density', type: 'number', step: 0.01, suffix: 'g/cm³', width: 'w-32', default: 1.22, desc: "The density of the filament material. Used for accurate weight estimation. e.g., PLA is ~1.22 g/cm³." },
@@ -87,16 +88,16 @@ export const filamentSchema = {
             type: 'group',
             label: 'Travel time after ramming',
             fields: [
-                { key: 'travel_time_ramming_extruder', label: 'Extruder', type: 'number', suffix: 'ms', width: 'w-32', default: 250, desc: "The duration of the ramming move during an extruder filament change." },
-                { key: 'travel_time_ramming_hotend', label: 'Hotend', type: 'number', suffix: 'ms', width: 'w-32', default: 250, desc: "The duration of the ramming move during a hotend change." },
+                { key: 'travel_time_ramming_extruder', label: 'Extruder change', type: 'number', step: 0.1, suffix: 's', width: 'w-32', default: 0, desc: "The duration of the ramming move during an extruder filament change." },
+                { key: 'travel_time_ramming_hotend', label: 'Hotend change', type: 'number', step: 0.1, suffix: 's', width: 'w-32', default: 0, desc: "The duration of the ramming move during a hotend change." },
             ]
         },
         {
             type: 'group',
             label: 'Precooling target temperature',
             fields: [
-                { key: 'precool_temp_extruder', label: 'Extruder', type: 'number', suffix: '°C', width: 'w-32', default: 140, desc: "The target temperature to pre-cool to during an extruder filament change." },
-                { key: 'precool_temp_hotend', label: 'Hotend', type: 'number', suffix: '°C', width: 'w-32', default: 140, desc: "The target temperature to pre-cool to during a hotend change." },
+                { key: 'precool_temp_extruder', label: 'Extruder change', type: 'number', suffix: '°C', width: 'w-32', default: 0, desc: "The target temperature to pre-cool to during an extruder filament change. 0 disables precooling." },
+                { key: 'precool_temp_hotend', label: 'Hotend change', type: 'number', suffix: '°C', width: 'w-32', default: 0, desc: "The target temperature to pre-cool to during a hotend change. 0 disables precooling." },
             ]
         },
         { key: 'idle_temp', label: 'Idle Temperature (AMS)', type: 'number', suffix: '°C', default: 0, desc: "Temperature the nozzle drops to when waiting in the AMS between prints or color changes. A lower value reduces oozing. 0 uses the printer default. Typical PLA: 0°C (off)." },
@@ -187,8 +188,8 @@ export const filamentSchema = {
     scarf_seam: [
         { type: 'heading', label: 'Filament Scarf Seam Settings' },
         { key: 'scarf_seam_type', label: 'Scarf Seam Type', type: 'select', options: ['none', 'outer', 'inner', 'both'], width: 'w-full', default: 'none', desc: "A technique to reduce the visibility of the seam by overlapping the start and end of the perimeter." },
-        { key: 'scarf_start_height', label: 'Scarf Start Height', type: 'number', suffix: 'mm', width: 'w-32', default: 0, desc: "The height at which to start the scarf seam." },
-        { key: 'scarf_slope_gap', label: 'Scarf Slope Gap', type: 'number', suffix: '%', width: 'w-32', default: 10, desc: "The gap in the slope of the scarf seam." },
+        { key: 'scarf_start_height', label: 'Scarf Start Height', type: 'number', suffix: '%', width: 'w-32', default: 10, desc: "The height at which to start the scarf seam, as a percentage of layer height (or mm if given as an absolute value)." },
+        { key: 'scarf_slope_gap', label: 'Scarf Slope Gap', type: 'number', suffix: '%', width: 'w-32', default: 0, desc: "The gap in the slope of the scarf seam." },
         { key: 'scarf_length', label: 'Scarf Length', type: 'number', suffix: 'mm', width: 'w-32', default: 5, desc: "The length of the scarf seam overlap." }
     ]
 };
