@@ -23,7 +23,15 @@ const filamentItem = {
   print_profile_id: 'profile-1',
   basic_settings: { filament_type: 'PLA', vendor: 'Overture', color: '#ff0000', metal_stickiness: 'None', diameter: 1.75, flow_ratio: 0.98, density: 1.22, shrinkage: 100, velocity_adaptation: 1, price: 24.52, softening_temp: 45, prime_vol_filament_change: 45, prime_vol_hotend_change: 45, ramming_len_extruder_change: 4.5, ramming_len_hotend_change: 4.5, travel_time_ramming_extruder: 0, travel_time_ramming_hotend: 0, precool_temp_extruder: 0, precool_temp_hotend: 0, idle_temp: 0 },
   temp_settings: { nozzle_temp_min: 190, nozzle_temp_max: 230, cool_plate_super_initial: 35, cool_plate_super_other: 35, cool_plate_initial: 35, cool_plate_other: 35, eng_plate_initial: 55, eng_plate_other: 55, smooth_pei_initial: 55, smooth_pei_other: 55, textured_pei_initial: 55, textured_pei_other: 55, first_layer_nozzle: 220, other_layers_nozzle: 220, vitrification_temp: 60 },
-  cooling_settings: { min_fan_speed: 100, max_fan_speed: 100, min_layer_time: 8, fan_always_on: true, aux_fan_speed: 70, no_cooling_for_first_layer: true, slow_down_for_cooling: true, slow_print_speed: 50, force_cooling_for_overhangs: false },
+  cooling_settings: {
+    close_fan_first_x_layers: 1, initial_fan_speed: 0, full_fan_speed_layer: 0,
+    min_fan_speed: 60, min_fan_speed_layer_time: 80, max_fan_speed: 80, max_fan_speed_layer_time: 6,
+    fan_always_on: true, slow_down_for_cooling: true, dont_slow_down_outer_walls: false,
+    slow_print_speed: 20, force_cooling_for_overhangs: true,
+    overhang_cooling_threshold: 50, overhang_participating_threshold: 100, overhang_fan_speed: 100,
+    pre_start_fan_time: 2, ironing_fan_speed: -1,
+    aux_close_fan_first_x_layers: 1, aux_initial_fan_speed: 0, aux_full_fan_speed_layer: 0, aux_fan_speed: 70,
+  },
   override_settings: { adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12, retraction_length: 0.8, z_hop: 0.4, pressure_advance: 0.02, wipe_distance: 1.0 },
   scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 10, scarf_slope_gap: 0, scarf_length: 5 },
   notes: '',
@@ -271,12 +279,33 @@ describe('EditorModal — filament type', () => {
     expect(metalSelect.attributes('disabled')).toBeDefined()
   })
 
-  it('Cooling tab shows fan and cooling fields', async () => {
+  it('Cooling tab shows part and auxiliary fan sections with threshold fields', async () => {
     const wrapper = mountFilament()
     const coolingTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Cooling')
     await coolingTab.trigger('click')
-    expect(wrapper.text()).toContain('Min Fan Speed')
-    expect(wrapper.text()).toContain('Slow Down for Cooling')
+    expect(wrapper.text()).toContain('Part Cooling Fan')
+    expect(wrapper.text()).toContain('Auxiliary Part Cooling Fan')
+    expect(wrapper.text()).toContain('Initial layer fan')
+    expect(wrapper.text()).toContain('Linear ramp up')
+    expect(wrapper.text()).toContain('Min fan speed threshold')
+    expect(wrapper.text()).toContain('Max fan speed threshold')
+    expect(wrapper.text()).toContain('Slow down for better layer cooling')
+    expect(wrapper.text()).toContain("Don't slow down outer walls")
+    expect(wrapper.text()).toContain('Cooling overhang threshold')
+    expect(wrapper.text()).toContain('Ironing fan speed')
+  })
+
+  it('editing a Cooling tab field updates the underlying model and is saved', async () => {
+    const wrapper = mountFilament()
+    const coolingTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Cooling')
+    await coolingTab.trigger('click')
+
+    const overhangInput = wrapper.findAll('.row').find(r => r.text().includes('Cooling overhang threshold')).find('input[type="number"]')
+    await overhangInput.setValue(75)
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].cooling_settings.overhang_cooling_threshold).toBe(75)
   })
 
   it('Setting Overrides tab shows retraction and pressure advance fields', async () => {

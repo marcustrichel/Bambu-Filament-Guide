@@ -75,6 +75,29 @@ test('sets Metal stickiness on a new filament and saves it', async ({ page }) =>
   expect(body.basic_settings.metal_stickiness).toBe('High');
 });
 
+test('edits Cooling tab fields on a new filament and saves them', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+  await page.getByRole('button', { name: 'New Filament' }).click();
+
+  await page.getByText('Cooling', { exact: true }).click();
+  await expect(page.getByText('Auxiliary Part Cooling Fan')).toBeVisible();
+
+  await page.getByText('Cooling overhang threshold').locator('..').locator('input[type="number"]').fill('75');
+  await page.getByText("Don't slow down outer walls").locator('..').locator('input[type="checkbox"]').check();
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/filaments') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.cooling_settings.overhang_cooling_threshold).toBe(75);
+  expect(body.cooling_settings.dont_slow_down_outer_walls).toBe(true);
+});
+
 test('clones a community filament from the Clone button inside the editor', async ({ page }) => {
   await mockSupabase(page, { profiles: [profileA], filaments: [communityFilament] });
   await page.goto('/');
