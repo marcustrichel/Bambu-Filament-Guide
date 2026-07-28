@@ -375,7 +375,11 @@ create table filaments (
     "aux_fan_speed": 70
   }'::jsonb,
 
-  -- Added adaptive_volumetric_speed and ramming_vol fields; corrected max_volumetric_speed default to 12
+  -- Added adaptive_volumetric_speed and ramming_vol fields; corrected max_volumetric_speed default to 12.
+  -- Expanded to mirror the full Bambu Studio Setting Overrides tab (Retraction
+  -- and Speed sections), as flat always-set fields rather than the nullable
+  -- per-field "N/A" overrides Bambu Studio shows, since this app has no
+  -- lower-priority global config for a disabled field to actually inherit from.
   override_settings jsonb not null default '{
     "adaptive_volumetric_speed": true,
     "max_volumetric_speed": 12,
@@ -383,8 +387,19 @@ create table filaments (
     "ramming_vol_hotend_change": 12,
     "retraction_length": 0.8,
     "z_hop": 0.4,
-    "pressure_advance": 0.02,
-    "wipe_distance": 1.0
+    "z_hop_type": "Normal Lift",
+    "retraction_speed": 30,
+    "deretraction_speed": 30,
+    "retract_restart_extra": 0,
+    "retract_before_travel": 2,
+    "retract_on_layer_change": false,
+    "wipe_while_retracting": false,
+    "wipe_distance": 1.0,
+    "retract_before_wipe": 100,
+    "long_retraction_when_cut": true,
+    "retraction_distance_when_cut": 18,
+    "override_overhang_speed": false,
+    "pressure_advance": 0.02
   }'::jsonb,
 
   scarf_seam jsonb not null default '{

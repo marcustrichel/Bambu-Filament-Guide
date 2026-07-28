@@ -231,10 +231,27 @@ export const filamentSchema = {
         { key: 'max_volumetric_speed', label: 'Max Volumetric Speed', type: 'number', suffix: 'mm³/s', width: 'w-32', default: 12, desc: 'The maximum rate at which the extruder can push filament. This is a critical limit for high-speed printing. For PLA, default is around 12-15 mm³/s.' },
         { key: 'ramming_vol_extruder_change', label: 'Ramming Vol (Extruder Change)', type: 'number', suffix: 'mm³/s', width: 'w-32', default: 12, desc: "The volumetric speed used during the ramming phase of a filament change." },
         { key: 'ramming_vol_hotend_change', label: 'Ramming Vol (Hotend Change)', type: 'number', suffix: 'mm³/s', width: 'w-32', default: 12, desc: "The volumetric speed used during ramming when the hotend is changed." },
-        { key: 'retraction_length', label: 'Retraction', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.8, desc: "The amount of filament to pull back when the print head travels over an empty space, to prevent stringing. Default is around 0.8mm." },
-        { key: 'z_hop', label: 'Z-Hop', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.4, desc: "Lifts the print head by this amount during travel moves to avoid hitting the printed part. Default is around 0.4mm." },
+
+        { type: 'heading', label: 'Retraction' },
+        { key: 'retraction_length', label: 'Length', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.8, desc: "The amount of filament to pull back when the print head travels over an empty space, to prevent stringing. Default is around 0.8mm." },
+        { key: 'z_hop', label: 'Z hop when retract', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0.4, desc: "Lifts the print head by this amount during travel moves to avoid hitting the printed part. Default is around 0.4mm." },
+        { key: 'z_hop_type', label: 'Z Hop Type', type: 'select', options: ['Normal Lift', 'Slope Lift', 'Spiral Lift'], width: 'w-32', default: 'Normal Lift', desc: "How the nozzle moves during a Z hop. 'Slope Lift' and 'Spiral Lift' ramp the Z motion in with the travel move instead of hopping straight up, reducing visible travel artifacts." },
+        { key: 'retraction_speed', label: 'Retraction Speed', type: 'number', step: 1, suffix: 'mm/s', width: 'w-32', default: 30, desc: "Speed at which filament is pulled back during a retraction." },
+        { key: 'deretraction_speed', label: 'Deretraction Speed', type: 'number', step: 1, suffix: 'mm/s', width: 'w-32', default: 30, desc: "Speed at which filament is pushed back out after a retraction, before resuming extrusion." },
+        { key: 'retract_restart_extra', label: 'Extra length on restart', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 0, desc: "Extra filament length pushed out after a retraction, on top of the retraction length, to compensate for pressure loss. Rarely needed with direct drive extruders." },
+        { key: 'retract_before_travel', label: 'Travel distance threshold', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 2, desc: "The minimum travel distance that triggers a retraction. Shorter travel moves print without retracting." },
+        { key: 'retract_on_layer_change', label: 'Retract when change layer', type: 'boolean', width: 'w-full', default: false, desc: "Forces a retraction every time the printer moves up to a new layer, regardless of travel distance." },
+        { key: 'wipe_while_retracting', label: 'Wipe while retracting', type: 'boolean', width: 'w-full', default: false, desc: "Moves the nozzle along the last printed wall while retracting, to reduce oozing and stringing." },
+        { key: 'wipe_distance', label: 'Wipe Distance', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 1.0, desc: "Distance the nozzle wipes along the last printed wall during retraction. Reduces stringing and oozing at travel start/end points. Default: 1.0mm." },
+        { key: 'retract_before_wipe', label: 'Retract amount before wipe', type: 'number', step: 1, suffix: '%', width: 'w-32', default: 100, desc: "The percentage of the retraction to complete before the wipe move starts." },
+        { key: 'long_retraction_when_cut', label: 'Long retraction when cut (experimental)', type: 'boolean', width: 'w-full', default: true, desc: "Performs a longer retraction before the filament is cut, so less filament is left in the hotend afterward. Experimental — may not suit every setup." },
+        { key: 'retraction_distance_when_cut', label: 'Retraction distance when cut', type: 'number', step: 1, suffix: 'mm', width: 'w-32', default: 18, desc: "How far filament is retracted before it's cut, when Long retraction when cut is enabled." },
+
+        { type: 'heading', label: 'Speed' },
+        { key: 'override_overhang_speed', label: 'Override overhang speed', type: 'boolean', width: 'w-full', default: false, desc: "Lets this filament use its own overhang print speeds instead of the linked print profile's." },
+
+        { type: 'heading', label: 'Flow Dynamics' },
         { key: 'pressure_advance', label: 'Pressure Advance (K)', type: 'number', step: 0.001, width: 'w-32', default: 0.02, desc: "Bambu's Flow Dynamics Calibration K-value. Compensates for pressure buildup in the nozzle, reducing blobs at corners and improving accuracy. Typical PLA: 0.01–0.04. Run the built-in calibration for best results." },
-        { key: 'wipe_distance', label: 'Wipe Distance', type: 'number', step: 0.1, suffix: 'mm', width: 'w-32', default: 1.0, desc: "Distance the nozzle wipes along the last printed wall during retraction. Reduces stringing and oozing at travel start/end points. Default: 1.0mm." }
     ],
     scarf_seam: [
         { type: 'heading', label: 'Filament Scarf Seam Settings' },

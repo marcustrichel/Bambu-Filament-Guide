@@ -32,7 +32,13 @@ const filamentItem = {
     pre_start_fan_time: 2, ironing_fan_speed: -1,
     aux_close_fan_first_x_layers: 1, aux_initial_fan_speed: 0, aux_full_fan_speed_layer: 0, aux_fan_speed: 70,
   },
-  override_settings: { adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12, retraction_length: 0.8, z_hop: 0.4, pressure_advance: 0.02, wipe_distance: 1.0 },
+  override_settings: {
+    adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12,
+    retraction_length: 0.8, z_hop: 0.4, z_hop_type: 'Normal Lift', retraction_speed: 30, deretraction_speed: 30,
+    retract_restart_extra: 0, retract_before_travel: 2, retract_on_layer_change: false, wipe_while_retracting: false,
+    wipe_distance: 1.0, retract_before_wipe: 100, long_retraction_when_cut: true, retraction_distance_when_cut: 18,
+    override_overhang_speed: false, pressure_advance: 0.02,
+  },
   scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 10, scarf_slope_gap: 0, scarf_length: 5 },
   notes: '',
 }
@@ -308,12 +314,36 @@ describe('EditorModal — filament type', () => {
     expect(wrapper.emitted('save')[0][0].cooling_settings.overhang_cooling_threshold).toBe(75)
   })
 
-  it('Setting Overrides tab shows retraction and pressure advance fields', async () => {
+  it('Setting Overrides tab shows retraction, speed, and pressure advance fields', async () => {
     const wrapper = mountFilament()
     const overrideTab = wrapper.findAll('.tab').find(t => t.text().includes('Setting Overrides'))
     await overrideTab.trigger('click')
     expect(wrapper.text()).toContain('Retraction')
+    expect(wrapper.text()).toContain('Z Hop Type')
+    expect(wrapper.text()).toContain('Retraction Speed')
+    expect(wrapper.text()).toContain('Deretraction Speed')
+    expect(wrapper.text()).toContain('Extra length on restart')
+    expect(wrapper.text()).toContain('Travel distance threshold')
+    expect(wrapper.text()).toContain('Retract when change layer')
+    expect(wrapper.text()).toContain('Wipe while retracting')
+    expect(wrapper.text()).toContain('Retract amount before wipe')
+    expect(wrapper.text()).toContain('Long retraction when cut (experimental)')
+    expect(wrapper.text()).toContain('Retraction distance when cut')
+    expect(wrapper.text()).toContain('Override overhang speed')
     expect(wrapper.text()).toContain('Pressure Advance')
+  })
+
+  it('editing the Z Hop Type select on Setting Overrides updates the model and is saved', async () => {
+    const wrapper = mountFilament()
+    const overrideTab = wrapper.findAll('.tab').find(t => t.text().includes('Setting Overrides'))
+    await overrideTab.trigger('click')
+
+    const zHopSelect = wrapper.findAll('.row').find(r => r.text().includes('Z Hop Type')).find('select')
+    await zHopSelect.setValue('Spiral Lift')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].override_settings.z_hop_type).toBe('Spiral Lift')
   })
 
   it('Notes tab shows a textarea', async () => {

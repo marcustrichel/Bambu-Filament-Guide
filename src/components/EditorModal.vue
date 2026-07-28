@@ -35,14 +35,15 @@ watch(() => props.item, (newItem) => {
 // Determine which schema to use
 const currentSchema = computed(() => props.type === 'profile' ? profileSchema : filamentSchema);
 
-// The Cooling tab schema is a flat array of fields interspersed with `heading`
-// markers (one per fan) and `group` fields (multi-input rows like "For the
-// first N layers / Fan speed X%"). Split it into sections up front so the
-// template can render each heading as its own bordered section.
-const coolingSections = computed(() => {
+// The Cooling and Setting Overrides tab schemas are flat arrays of fields
+// interspersed with `heading` markers (one per fan/section) and, for Cooling,
+// `group` fields (multi-input rows like "For the first N layers / Fan speed
+// X%"). Split each into sections up front so the template can render each
+// heading as its own bordered section.
+function buildFieldSections(fields) {
   const sections = [];
   let current = null;
-  for (const field of currentSchema.value.cooling_settings || []) {
+  for (const field of fields || []) {
     if (field.type === 'heading') {
       current = { label: field.label, fields: [] };
       sections.push(current);
@@ -52,7 +53,16 @@ const coolingSections = computed(() => {
     }
   }
   return sections;
-});
+}
+const coolingSections = computed(() => buildFieldSections(currentSchema.value.cooling_settings));
+const overrideSections = computed(() => buildFieldSections(currentSchema.value.override_settings));
+
+const OVERRIDE_SECTION_ICONS = {
+  'Volumetric Speed Limitation': '📊',
+  'Retraction': '🔄',
+  'Speed': '⚡',
+  'Flow Dynamics': '📈',
+};
 
 // Generate tabs based on schema keys
 const tabs = computed(() => {
@@ -628,41 +638,19 @@ const handleClose = () => {
 
             <!-- SETTING OVERRIDES TAB -->
             <div v-else-if="activeTab === 'override_settings'">
-                <section>
-                    <div class="section-header"><span class="icon">⚙️</span> Volumetric Speed</div>
-                    <template v-for="field in currentSchema.override_settings.filter(f => ['adaptive_volumetric_speed','max_volumetric_speed','ramming_vol_extruder_change','ramming_vol_hotend_change'].includes(f.key))" :key="field.key">
+                <section v-for="(sec, idx) in overrideSections" :key="idx">
+                    <div class="section-header"><span class="icon">{{ OVERRIDE_SECTION_ICONS[sec.label] || '⚙️' }}</span> {{ sec.label }}</div>
+                    <template v-for="field in sec.fields" :key="field.key">
                         <div class="row">
                             <div class="label">{{ field.label }}</div>
                             <div v-if="field.type === 'number'" class="input-group">
                                 <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 1" class="small-num">
                                 <span class="unit">{{ field.suffix || '' }}</span>
                             </div>
+                            <select v-else-if="field.type === 'select'" v-model="editingItem.override_settings[field.key]" :disabled="!isOwner" class="content-select" style="width: 140px;">
+                                <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+                            </select>
                             <input v-else-if="field.type === 'boolean'" type="checkbox" v-model="editingItem.override_settings[field.key]" :disabled="!isOwner">
-                        </div>
-                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
-                    </template>
-                </section>
-                <section>
-                    <div class="section-header"><span class="icon">🔄</span> Retraction &amp; Travel</div>
-                    <template v-for="field in currentSchema.override_settings.filter(f => ['retraction_length','z_hop','wipe_distance'].includes(f.key))" :key="field.key">
-                        <div class="row">
-                            <div class="label">{{ field.label }}</div>
-                            <div class="input-group">
-                                <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 0.1" class="small-num">
-                                <span class="unit">{{ field.suffix || '' }}</span>
-                            </div>
-                        </div>
-                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
-                    </template>
-                </section>
-                <section>
-                    <div class="section-header"><span class="icon">📈</span> Flow Dynamics</div>
-                    <template v-for="field in currentSchema.override_settings.filter(f => ['pressure_advance'].includes(f.key))" :key="field.key">
-                        <div class="row">
-                            <div class="label">{{ field.label }}</div>
-                            <div class="input-group">
-                                <input type="number" v-model.number="editingItem.override_settings[field.key]" :disabled="!isOwner" :step="field.step || 0.001" class="small-num">
-                            </div>
                         </div>
                         <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
                     </template>
