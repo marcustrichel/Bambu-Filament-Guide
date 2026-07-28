@@ -35,6 +35,25 @@ watch(() => props.item, (newItem) => {
 // Determine which schema to use
 const currentSchema = computed(() => props.type === 'profile' ? profileSchema : filamentSchema);
 
+// The Cooling tab schema is a flat array of fields interspersed with `heading`
+// markers (one per fan) and `group` fields (multi-input rows like "For the
+// first N layers / Fan speed X%"). Split it into sections up front so the
+// template can render each heading as its own bordered section.
+const coolingSections = computed(() => {
+  const sections = [];
+  let current = null;
+  for (const field of currentSchema.value.cooling_settings || []) {
+    if (field.type === 'heading') {
+      current = { label: field.label, fields: [] };
+      sections.push(current);
+    } else {
+      if (!current) { current = { label: '', fields: [] }; sections.push(current); }
+      current.fields.push(field);
+    }
+  }
+  return sections;
+});
+
 // Generate tabs based on schema keys
 const tabs = computed(() => {
   if (props.type === 'profile') {
@@ -580,10 +599,21 @@ const handleClose = () => {
 
             <!-- COOLING SETTINGS TAB -->
             <div v-else-if="activeTab === 'cooling_settings'">
-                <section>
-                    <div class="section-header"><span class="icon">🌬️</span> Part Cooling Fan</div>
-                    <template v-for="field in currentSchema.cooling_settings" :key="field.key || field.label">
-                        <div v-if="field.type !== 'heading' && field.type !== 'group'" class="row">
+                <section v-for="(sec, idx) in coolingSections" :key="idx">
+                    <div class="section-header"><span class="icon">🌬️</span> {{ sec.label }}</div>
+                    <template v-for="field in sec.fields" :key="field.key || field.label">
+                        <!-- Multi-input group row, e.g. "For the first N layers / Fan speed X%" -->
+                        <div v-if="field.type === 'group'" class="row" style="height: auto; align-items: flex-start;">
+                            <div class="label">{{ field.label }}</div>
+                            <div class="dual-inputs">
+                                <div v-for="sub in field.fields" :key="sub.key" class="sub-group">
+                                    <div v-if="sub.label" class="sub-label">{{ sub.label }}</div>
+                                    <input type="number" v-model.number="editingItem.cooling_settings[sub.key]" :disabled="!isOwner" :step="sub.step || 1" class="small-num">
+                                    <span class="unit">{{ sub.suffix || '' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="row">
                             <div class="label">{{ field.label }}</div>
                             <div v-if="field.type === 'number'" class="input-group">
                                 <input type="number" v-model.number="editingItem.cooling_settings[field.key]" :disabled="!isOwner" :step="field.step || 1" class="small-num">
@@ -591,7 +621,7 @@ const handleClose = () => {
                             </div>
                             <input v-else-if="field.type === 'boolean'" type="checkbox" v-model="editingItem.cooling_settings[field.key]" :disabled="!isOwner">
                         </div>
-                        <p v-if="field.desc && field.type !== 'heading'" class="desc-text">{{ field.desc }}</p>
+                        <p v-if="field.desc" class="desc-text">{{ field.desc }}</p>
                     </template>
                 </section>
             </div>

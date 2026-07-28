@@ -347,16 +347,32 @@ create table filaments (
     "vitrification_temp": 60
   }'::jsonb,
 
+  -- Expanded to mirror the full Bambu Studio Cooling tab (Part + Auxiliary
+  -- cooling fan). Replaces the old flat min_layer_time/no_cooling_for_first_layer
+  -- fields with the initial-layer-fan and min/max-fan-speed-threshold groups
+  -- they were a simplification of.
   cooling_settings jsonb not null default '{
-    "min_fan_speed": 100,
-    "max_fan_speed": 100,
-    "min_layer_time": 8,
+    "close_fan_first_x_layers": 1,
+    "initial_fan_speed": 0,
+    "full_fan_speed_layer": 0,
+    "min_fan_speed": 60,
+    "min_fan_speed_layer_time": 80,
+    "max_fan_speed": 80,
+    "max_fan_speed_layer_time": 6,
     "fan_always_on": true,
-    "aux_fan_speed": 70,
-    "no_cooling_for_first_layer": true,
     "slow_down_for_cooling": true,
-    "slow_print_speed": 50,
-    "force_cooling_for_overhangs": false
+    "dont_slow_down_outer_walls": false,
+    "slow_print_speed": 20,
+    "force_cooling_for_overhangs": true,
+    "overhang_cooling_threshold": 50,
+    "overhang_participating_threshold": 100,
+    "overhang_fan_speed": 100,
+    "pre_start_fan_time": 2,
+    "ironing_fan_speed": -1,
+    "aux_close_fan_first_x_layers": 1,
+    "aux_initial_fan_speed": 0,
+    "aux_full_fan_speed_layer": 0,
+    "aux_fan_speed": 70
   }'::jsonb,
 
   -- Added adaptive_volumetric_speed and ramming_vol fields; corrected max_volumetric_speed default to 12

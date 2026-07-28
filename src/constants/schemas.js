@@ -164,15 +164,66 @@ export const filamentSchema = {
         { key: 'vitrification_temp', label: 'Vitrification Temp', type: 'number', suffix: '°C', width: 'w-32', default: 60, desc: "The glass transition temperature (Tg) of the material. The chamber fan will be controlled based on this value to prevent clogging. For PLA, this is around 60°C." },
     ],
     cooling_settings: [
-        { key: 'min_fan_speed', label: 'Min Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 100, desc: "The minimum speed of the part cooling fan." },
-        { key: 'max_fan_speed', label: 'Max Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 100, desc: "The maximum speed of the part cooling fan." },
-        { key: 'min_layer_time', label: 'Min Layer Time', type: 'number', suffix: 's', width: 'w-32', default: 8, desc: "If a layer prints faster than this time, the print speed will be slowed down to ensure adequate cooling." },
-        { key: 'fan_always_on', label: 'Fan Always On', type: 'boolean', width: 'w-full', default: true, desc: "Keeps the part cooling fan running at all times, even on the first layer." },
-        { key: 'aux_fan_speed', label: 'Aux Fan Speed', type: 'number', suffix: '%', width: 'w-32', default: 70, desc: "The speed of the auxiliary part cooling fan, if available." },
-        { key: 'no_cooling_for_first_layer', label: 'No Fan on First Layer', type: 'boolean', width: 'w-full', default: true, desc: "Disables the part cooling fan during the first layer to improve bed adhesion. Strongly recommended for all materials." },
-        { key: 'slow_down_for_cooling', label: 'Slow Down for Cooling', type: 'boolean', width: 'w-full', default: true, desc: "If a layer finishes faster than Min Layer Time, the print speed is automatically reduced to allow adequate cooling. Essential for small parts." },
-        { key: 'slow_print_speed', label: 'Slow Print Speed', type: 'number', suffix: 'mm/s', step: 1, width: 'w-32', default: 50, desc: "The minimum speed the printer will drop to when slowing for cooling. Will not go below this value. Default: 50 mm/s." },
-        { key: 'force_cooling_for_overhangs', label: 'Force Fan for Overhangs', type: 'boolean', width: 'w-full', default: false, desc: "Temporarily increases the fan to maximum speed when printing overhangs, improving overhang quality for materials prone to sagging." }
+        { type: 'heading', label: 'Part Cooling Fan' },
+        {
+            type: 'group',
+            label: 'Initial layer fan',
+            fields: [
+                { key: 'close_fan_first_x_layers', label: 'For the first', type: 'number', step: 1, suffix: 'layers', width: 'w-20', default: 1, desc: "The part cooling fan is held at the fixed speed below for this many layers before ramping up." },
+                { key: 'initial_fan_speed', label: 'Fan speed', type: 'number', step: 1, suffix: '%', width: 'w-20', default: 0, desc: "The fixed part cooling fan speed used during the initial layers. 0% is recommended for most materials to improve bed adhesion." },
+            ]
+        },
+        {
+            type: 'group',
+            label: 'Linear ramp up',
+            fields: [
+                { key: 'full_fan_speed_layer', label: '', type: 'number', step: 1, suffix: 'layers', width: 'w-20', default: 0, desc: "The layer at which the part cooling fan reaches its full (threshold-based) speed, ramping up linearly from the initial layer fan speed. 0 disables the ramp." },
+            ]
+        },
+        {
+            type: 'group',
+            label: 'Min fan speed threshold',
+            fields: [
+                { key: 'min_fan_speed', label: 'Fan speed', type: 'number', step: 1, suffix: '%', width: 'w-20', default: 60, desc: "The part cooling fan speed used when a layer takes longer than the layer time below to print." },
+                { key: 'min_fan_speed_layer_time', label: 'Layer time', type: 'number', step: 1, suffix: 's', width: 'w-20', default: 80, desc: "Layer print time above which the fan runs at the min fan speed." },
+            ]
+        },
+        {
+            type: 'group',
+            label: 'Max fan speed threshold',
+            fields: [
+                { key: 'max_fan_speed', label: 'Fan speed', type: 'number', step: 1, suffix: '%', width: 'w-20', default: 80, desc: "The part cooling fan speed used when a layer takes less than the layer time below to print, ramping linearly with the min fan speed threshold." },
+                { key: 'max_fan_speed_layer_time', label: 'Layer time', type: 'number', step: 1, suffix: 's', width: 'w-20', default: 6, desc: "Layer print time below which the fan runs at the max fan speed." },
+            ]
+        },
+        { key: 'fan_always_on', label: 'Keep fan always on', type: 'boolean', width: 'w-full', default: true, desc: "Keeps the part cooling fan running at the min fan speed at all times, even when otherwise off." },
+        { key: 'slow_down_for_cooling', label: 'Slow down for better layer cooling', type: 'boolean', width: 'w-full', default: true, desc: "If a layer finishes faster than the max fan speed threshold's layer time, print speed is automatically reduced to allow adequate cooling. Essential for small parts." },
+        { key: 'dont_slow_down_outer_walls', label: "Don't slow down outer walls", type: 'boolean', width: 'w-full', default: false, desc: "Keeps outer walls at full speed even when the printer is slowing down for cooling, trading some surface quality for a faster print." },
+        { key: 'slow_print_speed', label: 'Min print speed', type: 'number', suffix: 'mm/s', step: 1, width: 'w-32', default: 20, desc: "The minimum speed the printer will drop to when slowing for cooling. Will not go below this value." },
+        { key: 'force_cooling_for_overhangs', label: 'Force cooling for overhangs and bridges', type: 'boolean', width: 'w-full', default: true, desc: "Temporarily increases the fan to the overhang fan speed when printing overhangs and bridges, improving quality for materials prone to sagging." },
+        { key: 'overhang_cooling_threshold', label: 'Cooling overhang threshold', type: 'number', suffix: '%', width: 'w-32', default: 50, desc: "The minimum overhang percentage (of line width unsupported) that triggers forced overhang cooling." },
+        { key: 'overhang_participating_threshold', label: 'Overhang threshold for participating cooling', type: 'number', suffix: '%', width: 'w-32', default: 100, desc: "The overhang percentage above which perimeters are treated as fully unsupported for cooling purposes." },
+        { key: 'overhang_fan_speed', label: 'Fan speed for overhangs', type: 'number', suffix: '%', width: 'w-32', default: 100, desc: "The part cooling fan speed used on overhangs and bridges when force cooling is triggered." },
+        { key: 'pre_start_fan_time', label: 'Pre start fan time', type: 'number', suffix: 's', step: 0.1, width: 'w-32', default: 2, desc: "How long before reaching an overhang the fan is spun up, so it's already at speed once printing begins." },
+        { key: 'ironing_fan_speed', label: 'Ironing fan speed', type: 'number', suffix: '%', width: 'w-32', default: -1, desc: "The part cooling fan speed used while ironing. -1 leaves the fan speed unchanged from the preceding move." },
+
+        { type: 'heading', label: 'Auxiliary Part Cooling Fan' },
+        {
+            type: 'group',
+            label: 'Initial layer fan',
+            fields: [
+                { key: 'aux_close_fan_first_x_layers', label: 'For the first', type: 'number', step: 1, suffix: 'layers', width: 'w-20', default: 1, desc: "The auxiliary fan is held at the fixed speed below for this many layers before ramping up." },
+                { key: 'aux_initial_fan_speed', label: 'Fan speed', type: 'number', step: 1, suffix: '%', width: 'w-20', default: 0, desc: "The fixed auxiliary fan speed used during the initial layers." },
+            ]
+        },
+        {
+            type: 'group',
+            label: 'Linear ramp up',
+            fields: [
+                { key: 'aux_full_fan_speed_layer', label: 'At layer', type: 'number', step: 1, suffix: 'layers', width: 'w-20', default: 0, desc: "The layer at which the auxiliary fan reaches its full ramp-up speed." },
+                { key: 'aux_fan_speed', label: 'ramp up to', type: 'number', step: 1, suffix: '%', width: 'w-20', default: 70, desc: "The speed the auxiliary part cooling fan ramps up to, if available." },
+            ]
+        },
     ],
     override_settings: [
         { type: 'heading', label: 'Volumetric Speed Limitation' },
