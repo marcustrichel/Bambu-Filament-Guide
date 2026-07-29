@@ -98,6 +98,56 @@ test('edits Cooling tab fields on a new filament and saves them', async ({ page 
   expect(body.cooling_settings.dont_slow_down_outer_walls).toBe(true);
 });
 
+test('edits Setting Overrides tab fields on a new filament and saves them', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+  await page.getByRole('button', { name: 'New Filament' }).click();
+
+  await page.getByText('Setting Overrides', { exact: true }).click();
+  await expect(page.getByText('Override overhang speed')).toBeVisible();
+
+  await page.getByText('Z Hop Type').locator('..').getByRole('combobox').selectOption('Spiral Lift');
+  await page.getByText('Retraction distance when cut').locator('..').locator('input[type="number"]').fill('20');
+  await page.getByText('Override overhang speed').locator('..').locator('input[type="checkbox"]').check();
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/filaments') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.override_settings.z_hop_type).toBe('Spiral Lift');
+  expect(body.override_settings.retraction_distance_when_cut).toBe(20);
+  expect(body.override_settings.override_overhang_speed).toBe(true);
+});
+
+test('edits Advanced tab G-code fields on a new filament and saves them', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+  await page.getByRole('button', { name: 'New Filament' }).click();
+
+  await page.getByText('Advanced', { exact: true }).click();
+  await expect(page.getByText('Filament start G-code')).toBeVisible();
+  await expect(page.getByText('Filament end G-code')).toBeVisible();
+
+  const textareas = page.locator('textarea');
+  await textareas.nth(0).fill('M104 S200');
+  await textareas.nth(1).fill('M104 S0');
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/filaments') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.start_gcode).toBe('M104 S200');
+  expect(body.end_gcode).toBe('M104 S0');
+});
+
 test('clones a community filament from the Clone button inside the editor', async ({ page }) => {
   await mockSupabase(page, { profiles: [profileA], filaments: [communityFilament] });
   await page.goto('/');

@@ -12,7 +12,7 @@ const profileItem = {
   quality: { layer_height: 0.2, first_layer_height: 0.2, outer_wall_line_width: 0.42, seam_position: 'aligned', wall_generator: 'arachne', ironing_type: 'no_ironing', precision_walls: true },
   strength: { wall_loops: 2, top_shell_layers: 3, bottom_shell_layers: 3, sparse_infill_density: 15, sparse_infill_pattern: 'grid', top_surface_pattern: 'monotonic', bottom_surface_pattern: 'monotonic', detect_overhang_wall: true },
   speed: { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 5000 },
-  support: { enable: false, type: 'tree', style: 'tree_slim', threshold_angle: 30 },
+  support: { enable: false, type: 'tree(auto)', style: 'tree_slim', threshold_angle: 30 },
   others: { brim_type: 'auto', brim_width: 5, skirt_loops: 0, elephant_foot_compensation: 0.0 },
 }
 
@@ -32,9 +32,17 @@ const filamentItem = {
     pre_start_fan_time: 2, ironing_fan_speed: -1,
     aux_close_fan_first_x_layers: 1, aux_initial_fan_speed: 0, aux_full_fan_speed_layer: 0, aux_fan_speed: 70,
   },
-  override_settings: { adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12, retraction_length: 0.8, z_hop: 0.4, pressure_advance: 0.02, wipe_distance: 1.0 },
+  override_settings: {
+    adaptive_volumetric_speed: true, max_volumetric_speed: 12, ramming_vol_extruder_change: 12, ramming_vol_hotend_change: 12,
+    retraction_length: 0.8, z_hop: 0.4, z_hop_type: 'Normal Lift', retraction_speed: 30, deretraction_speed: 30,
+    retract_restart_extra: 0, retract_before_travel: 2, retract_on_layer_change: false, wipe_while_retracting: false,
+    wipe_distance: 1.0, retract_before_wipe: 100, long_retraction_when_cut: true, retraction_distance_when_cut: 18,
+    override_overhang_speed: false, pressure_advance: 0.02,
+  },
   scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 10, scarf_slope_gap: 0, scarf_length: 5 },
   notes: '',
+  start_gcode: '',
+  end_gcode: '',
 }
 
 const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E']
@@ -90,7 +98,7 @@ describe('EditorModal — profile type', () => {
     await speedTab.trigger('click')
     const accelInput = wrapper.findAll('input[type="number"]').find((input) => {
       const label = input.element.closest('.group')?.querySelector('label')?.textContent
-      return label?.includes('Acceleration')
+      return label?.includes('Normal printing')
     })
     expect(accelInput.element.value).toBe('10000')
   })
@@ -149,14 +157,44 @@ describe('EditorModal — profile type', () => {
     const wrapper = mountProfile()
     const speedTab = wrapper.findAll('button').find(b => b.text().trim() === 'Speed')
     await speedTab.trigger('click')
-    expect(wrapper.text()).toContain('Outer Wall')
+    expect(wrapper.text()).toContain('Outer wall')
+    expect(wrapper.text()).toContain('Initial layer speed')
+    expect(wrapper.text()).toContain('Overhang speed (50% overhang)')
+    expect(wrapper.text()).toContain('Acceleration')
   })
 
   it('switching to Strength tab shows strength-specific fields', async () => {
     const wrapper = mountProfile()
     const strengthTab = wrapper.findAll('button').find(b => b.text().trim() === 'Strength')
     await strengthTab.trigger('click')
-    expect(wrapper.text()).toContain('Wall Loops')
+    expect(wrapper.text()).toContain('Wall loops')
+    expect(wrapper.text()).toContain('Top/bottom shells')
+    expect(wrapper.text()).toContain('Length of sparse infill anchor')
+  })
+
+  it('switching to Quality tab shows the new section headings', async () => {
+    const wrapper = mountProfile()
+    expect(wrapper.text()).toContain('Line width')
+    expect(wrapper.text()).toContain('Precision')
+    expect(wrapper.text()).toContain('Elephant foot compensation')
+  })
+
+  it('switching to Support tab shows the new section headings', async () => {
+    const wrapper = mountProfile()
+    const supportTab = wrapper.findAll('button').find(b => b.text().trim() === 'Support')
+    await supportTab.trigger('click')
+    expect(wrapper.text()).toContain('Filament for Supports')
+    expect(wrapper.text()).toContain('Independent support layer height')
+  })
+
+  it('switching to Others tab shows the new section headings and Notes/Post-processing textareas', async () => {
+    const wrapper = mountProfile()
+    const othersTab = wrapper.findAll('button').find(b => b.text().trim() === 'Others')
+    await othersTab.trigger('click')
+    expect(wrapper.text()).toContain('Prime tower')
+    expect(wrapper.text()).toContain('Special mode')
+    expect(wrapper.text()).toContain('Post-processing scripts')
+    expect(wrapper.findAll('textarea').length).toBe(2)
   })
 })
 
@@ -308,12 +346,36 @@ describe('EditorModal — filament type', () => {
     expect(wrapper.emitted('save')[0][0].cooling_settings.overhang_cooling_threshold).toBe(75)
   })
 
-  it('Setting Overrides tab shows retraction and pressure advance fields', async () => {
+  it('Setting Overrides tab shows retraction, speed, and pressure advance fields', async () => {
     const wrapper = mountFilament()
     const overrideTab = wrapper.findAll('.tab').find(t => t.text().includes('Setting Overrides'))
     await overrideTab.trigger('click')
     expect(wrapper.text()).toContain('Retraction')
+    expect(wrapper.text()).toContain('Z Hop Type')
+    expect(wrapper.text()).toContain('Retraction Speed')
+    expect(wrapper.text()).toContain('Deretraction Speed')
+    expect(wrapper.text()).toContain('Extra length on restart')
+    expect(wrapper.text()).toContain('Travel distance threshold')
+    expect(wrapper.text()).toContain('Retract when change layer')
+    expect(wrapper.text()).toContain('Wipe while retracting')
+    expect(wrapper.text()).toContain('Retract amount before wipe')
+    expect(wrapper.text()).toContain('Long retraction when cut (experimental)')
+    expect(wrapper.text()).toContain('Retraction distance when cut')
+    expect(wrapper.text()).toContain('Override overhang speed')
     expect(wrapper.text()).toContain('Pressure Advance')
+  })
+
+  it('editing the Z Hop Type select on Setting Overrides updates the model and is saved', async () => {
+    const wrapper = mountFilament()
+    const overrideTab = wrapper.findAll('.tab').find(t => t.text().includes('Setting Overrides'))
+    await overrideTab.trigger('click')
+
+    const zHopSelect = wrapper.findAll('.row').find(r => r.text().includes('Z Hop Type')).find('select')
+    await zHopSelect.setValue('Spiral Lift')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].override_settings.z_hop_type).toBe('Spiral Lift')
   })
 
   it('Notes tab shows a textarea', async () => {
@@ -334,11 +396,28 @@ describe('EditorModal — filament type', () => {
     expect(wrapper.emitted('save')[0][0]).toMatchObject({ print_profile_id: 'profile-2' })
   })
 
-  it('Advanced tab still shows placeholder text', async () => {
+  it('Advanced tab shows Filament start/end G-code textareas', async () => {
     const wrapper = mountFilament()
     const advancedTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Advanced')
     await advancedTab.trigger('click')
-    expect(wrapper.text()).toContain('not yet implemented')
+    expect(wrapper.text()).toContain('Filament start G-code')
+    expect(wrapper.text()).toContain('Filament end G-code')
+    expect(wrapper.findAll('textarea').length).toBe(2)
+  })
+
+  it('editing G-code on the Advanced tab updates the model and is saved', async () => {
+    const wrapper = mountFilament()
+    const advancedTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Advanced')
+    await advancedTab.trigger('click')
+
+    const textareas = wrapper.findAll('textarea')
+    await textareas[0].setValue('M104 S200')
+    await textareas[1].setValue('M104 S0')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].start_gcode).toBe('M104 S200')
+    expect(wrapper.emitted('save')[0][0].end_gcode).toBe('M104 S0')
   })
 
   it('blocks saving when no print profile is linked, and warns the user', async () => {

@@ -61,7 +61,38 @@ test('changing the target printer updates the speed defaults', async ({ page }) 
   await page.getByRole('combobox', { name: 'Target Printer' }).selectOption('X1 Carbon');
   await page.getByRole('button', { name: 'Speed' }).click();
 
-  await expect(page.getByText('Acceleration').locator('..').getByRole('spinbutton')).toHaveValue('10000');
+  await expect(page.getByText('Normal printing', { exact: true }).locator('..').getByRole('spinbutton')).toHaveValue('10000');
+});
+
+test('edits fields across the expanded Quality/Strength/Support/Others tabs and saves them', async ({ page }) => {
+  await mockSupabase(page, { profiles: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: 'New Profile' }).click();
+
+  // Quality tab is shown by default.
+  await expect(page.getByText('Precision', { exact: true })).toBeVisible();
+  await page.getByText('Elephant foot compensation').locator('..').getByRole('spinbutton').fill('0.15');
+
+  await page.getByRole('button', { name: 'Strength' }).click();
+  await page.getByText('Wall loops').locator('..').getByRole('spinbutton').fill('3');
+
+  await page.getByRole('button', { name: 'Support' }).click();
+  await page.getByText('Independent support layer height').locator('..').locator('input[type="checkbox"]').uncheck();
+
+  await page.getByRole('button', { name: 'Others' }).click();
+  await page.getByText('Post-processing scripts').locator('..').getByRole('textbox').fill('/scripts/notify.sh');
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/print_profiles') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.quality.elephant_foot_compensation).toBe(0.15);
+  expect(body.strength.wall_loops).toBe(3);
+  expect(body.support.support_independent_layer_height).toBe(false);
+  expect(body.others.post_processing_scripts).toBe('/scripts/notify.sh');
 });
 
 test('clones a community profile from the Clone button inside the editor', async ({ page }) => {
