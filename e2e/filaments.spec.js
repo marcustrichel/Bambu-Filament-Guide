@@ -123,6 +123,31 @@ test('edits Setting Overrides tab fields on a new filament and saves them', asyn
   expect(body.override_settings.override_overhang_speed).toBe(true);
 });
 
+test('edits Advanced tab G-code fields on a new filament and saves them', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [] });
+  await page.goto('/');
+  await signIn(page);
+
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+  await page.getByRole('button', { name: 'New Filament' }).click();
+
+  await page.getByText('Advanced', { exact: true }).click();
+  await expect(page.getByText('Filament start G-code')).toBeVisible();
+  await expect(page.getByText('Filament end G-code')).toBeVisible();
+
+  const textareas = page.locator('textarea');
+  await textareas.nth(0).fill('M104 S200');
+  await textareas.nth(1).fill('M104 S0');
+
+  const [request] = await Promise.all([
+    page.waitForRequest((req) => req.url().includes('/rest/v1/filaments') && req.method() === 'POST'),
+    page.getByRole('button', { name: 'Save Changes' }).click(),
+  ]);
+  const body = request.postDataJSON();
+  expect(body.start_gcode).toBe('M104 S200');
+  expect(body.end_gcode).toBe('M104 S0');
+});
+
 test('clones a community filament from the Clone button inside the editor', async ({ page }) => {
   await mockSupabase(page, { profiles: [profileA], filaments: [communityFilament] });
   await page.goto('/');

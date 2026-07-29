@@ -37,6 +37,8 @@ The application relies on a relational database with JSONB columns for flexible 
     *   `cooling_settings` (JSONB): Fan speeds.
     *   `override_settings` (JSONB): Retraction, Z-hop.
     *   `scarf_seam` (JSONB): Scarf seam specific settings.
+    *   `notes` (Text): Freeform notes, not schema-driven.
+    *   `start_gcode`, `end_gcode` (Text): Advanced tab's raw G-code snippets, injected on filament change. Plain text columns like `notes` rather than a JSONB group, since they're unstructured.
     *   `created_at` (Timestamp).
 
 *   **`printers`** — private, owner-only (not shared with other users)
@@ -82,6 +84,7 @@ Mirrors the full "Filament" tab of Bambu Studio's filament editor (see `src/cons
     *   `scarf_start_height`: Height to start the scarf seam, as % of layer height (Default: 10%).
     *   `scarf_slope_gap`: Gap in the slope of the scarf seam (Default: 0%).
     *   `scarf_length`: Overlap length.
+*   **Advanced:** `start_gcode`/`end_gcode` — raw G-code injected on a filament change, edited as plain text (not schema-driven, like `notes`).
 
 #### Print Profile Settings
 *   **Quality:** Layer height, Seam position, Wall generator, Ironing.

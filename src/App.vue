@@ -299,6 +299,8 @@ const createNewFilament = () => {
       scarf_length: 5
     },
     notes: '',
+    start_gcode: '',
+    end_gcode: '',
   };
   openEditor(newF, 'filament');
 };
@@ -409,7 +411,9 @@ const handleSaveItem = async (itemToSave) => {
       cooling_settings: itemToSave.cooling_settings, 
       override_settings: itemToSave.override_settings,
       scarf_seam: itemToSave.scarf_seam,
-      notes: itemToSave.notes ?? ''
+      notes: itemToSave.notes ?? '',
+      start_gcode: itemToSave.start_gcode ?? '',
+      end_gcode: itemToSave.end_gcode ?? ''
     };
   }
 

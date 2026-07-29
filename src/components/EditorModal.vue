@@ -670,6 +670,28 @@ const handleClose = () => {
                 </section>
             </div>
 
+            <!-- ADVANCED TAB -->
+            <div v-else-if="activeTab === 'advanced'">
+                <section>
+                    <div class="section-header"><span class="icon">⚙️</span> Filament start G-code</div>
+                    <textarea
+                        v-model="editingItem.start_gcode"
+                        :disabled="!isOwner"
+                        spellcheck="false"
+                        class="notes-area gcode-area"
+                    ></textarea>
+                </section>
+                <section>
+                    <div class="section-header"><span class="icon">⚙️</span> Filament end G-code</div>
+                    <textarea
+                        v-model="editingItem.end_gcode"
+                        :disabled="!isOwner"
+                        spellcheck="false"
+                        class="notes-area gcode-area"
+                    ></textarea>
+                </section>
+            </div>
+
             <!-- OTHER TABS (Placeholder) -->
             <div v-else class="p-4 text-gray-500 text-center">
                 <p>Settings for {{ activeTabLabel }} are not yet implemented in this view.</p>
@@ -956,6 +978,12 @@ const handleClose = () => {
     }
 
     .notes-area:disabled { background: #f8f8f8; color: #aaa; }
+
+    .gcode-area {
+        min-height: 180px;
+        font-family: Consolas, Monaco, 'Courier New', monospace;
+        white-space: pre;
+    }
 
     /* Icons (Simplified SVG/Unicode) */
     .icon { width: 16px; text-align: center; }

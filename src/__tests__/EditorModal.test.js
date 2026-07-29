@@ -41,6 +41,8 @@ const filamentItem = {
   },
   scarf_seam: { scarf_seam_type: 'none', scarf_start_height: 10, scarf_slope_gap: 0, scarf_length: 5 },
   notes: '',
+  start_gcode: '',
+  end_gcode: '',
 }
 
 const PRINTER_MODELS = ['A1 Mini', 'A1', 'P1P', 'P1S', 'X1', 'X1 Carbon', 'X1E']
@@ -364,11 +366,28 @@ describe('EditorModal — filament type', () => {
     expect(wrapper.emitted('save')[0][0]).toMatchObject({ print_profile_id: 'profile-2' })
   })
 
-  it('Advanced tab still shows placeholder text', async () => {
+  it('Advanced tab shows Filament start/end G-code textareas', async () => {
     const wrapper = mountFilament()
     const advancedTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Advanced')
     await advancedTab.trigger('click')
-    expect(wrapper.text()).toContain('not yet implemented')
+    expect(wrapper.text()).toContain('Filament start G-code')
+    expect(wrapper.text()).toContain('Filament end G-code')
+    expect(wrapper.findAll('textarea').length).toBe(2)
+  })
+
+  it('editing G-code on the Advanced tab updates the model and is saved', async () => {
+    const wrapper = mountFilament()
+    const advancedTab = wrapper.findAll('.tab').find(t => t.text().trim() === 'Advanced')
+    await advancedTab.trigger('click')
+
+    const textareas = wrapper.findAll('textarea')
+    await textareas[0].setValue('M104 S200')
+    await textareas[1].setValue('M104 S0')
+
+    const saveBtn = wrapper.findAll('button').find(b => b.text().includes('Save Changes'))
+    await saveBtn.trigger('click')
+    expect(wrapper.emitted('save')[0][0].start_gcode).toBe('M104 S200')
+    expect(wrapper.emitted('save')[0][0].end_gcode).toBe('M104 S0')
   })
 
   it('blocks saving when no print profile is linked, and warns the user', async () => {

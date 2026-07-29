@@ -411,6 +411,12 @@ create table filaments (
 
   notes       text not null default '',
 
+  -- Advanced tab: raw G-code snippets injected on filament change, not
+  -- structured settings, so plain text columns like `notes` rather than
+  -- another JSONB settings group.
+  start_gcode text not null default '',
+  end_gcode   text not null default '',
+
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
