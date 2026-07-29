@@ -87,11 +87,12 @@ Mirrors the full "Filament" tab of Bambu Studio's filament editor (see `src/cons
 *   **Advanced:** `start_gcode`/`end_gcode` — raw G-code injected on a filament change, edited as plain text (not schema-driven, like `notes`).
 
 #### Print Profile Settings
-*   **Quality:** Layer height, Seam position, Wall generator, Ironing.
-*   **Strength:** Wall loops, Shell layers, Infill (density/pattern).
-*   **Speed:** Wall/Infill/Travel/First Layer speeds, Acceleration.
-*   **Support:** Enable, Type (Normal/Tree), Style, Threshold angle.
-*   **Others:** Brim (type/width), Skirt loops.
+Mirrors the full Quality/Strength/Speed/Support/Others tabs of Bambu Studio's print settings editor (see `src/constants/schemas.js` `profileSchema` for the authoritative field list/defaults). Only the Speed tab's original 8 fields (`outer_wall`, `inner_wall`, `sparse_infill`, `solid_infill`, `top_surface`, `first_layer`, `travel`, `acceleration`) vary by target printer model via `PRINTER_MODEL_SPEED_DEFAULTS` — every other field across all 5 tabs is a flat default shared by every model.
+*   **Quality:** Layer height (+ Initial layer height, Mixed color sublayer); Line width (Default, Initial layer, Outer/Inner wall, Top surface, Sparse/Internal solid infill, Support); Seam (position, scarf seam application/steps/angle, Role-based wipe speed); Precision (Slice gap closing radius, Resolution, Arc fitting, X-Y hole/contour compensation, Precision Walls, Elephant foot compensation, Precise Z height); Ironing; Wall generator; Advanced (Order of walls, Print infill first, Bridge flow, Thick bridges, Only-one-wall options, Smooth speed discontinuity, Avoid crossing wall).
+*   **Strength:** Walls (loops, Embed wall into infill, Detect thin/overhang wall); Top/bottom shells (pattern/density/layers/thickness, paint penetration layers, internal solid infill pattern); Sparse infill (density, fill multiline, pattern, anchor length/max); Advanced (Infill/wall overlap, Infill/bridge direction, min sparse infill threshold, infill combination, narrow/floating shell detection).
+*   **Speed:** Initial layer speed; Other layers speed (wall/infill/top-surface speeds, small perimeters, vertical shell speed, per-percentage overhang speeds, bridge/gap-infill/support speeds); Travel speed; Acceleration (normal/travel/initial-layer/per-feature accelerations).
+*   **Support:** Support (enable, Type, Style, Threshold angle, On build plate only, Remove small overhangs); Raft; Filament for Supports; Advanced (density/expansion/Z-distance/pattern/interface settings).
+*   **Others:** Bed adhesion (Skirt, Brim); Prime tower; Purge options; Special mode (Slicing mode, Print sequence, Spiral vase, Timelapse, Fuzzy skin); Advanced (beam interlocking); G-code output (Reduce infill retraction); Post-processing scripts; Notes — the last three are plain JSONB string fields on this tab (not a separate top-level tab, unlike the filament editor's Notes).
 
 ## 4. Application Flows
 

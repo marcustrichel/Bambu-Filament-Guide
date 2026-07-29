@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { profileSchema, filamentSchema } from '@/constants/schemas'
 
-const VALID_FIELD_TYPES = ['number', 'select', 'boolean', 'text', 'color']
+const VALID_FIELD_TYPES = ['number', 'select', 'boolean', 'text', 'color', 'textarea']
 const PROFILE_TABS = ['quality', 'strength', 'speed', 'support', 'others']
 const FILAMENT_TABS = ['basic_settings', 'temp_settings', 'cooling_settings', 'override_settings', 'scarf_seam']
 
@@ -28,9 +28,20 @@ describe('profileSchema', () => {
     })
   })
 
+  it('heading entries have a label but no key', () => {
+    PROFILE_TABS.forEach(tab => {
+      profileSchema[tab]
+        .filter(f => f.type === 'heading')
+        .forEach(h => {
+          expect(h.label).toBeDefined()
+          expect(h.key).toBeUndefined()
+        })
+    })
+  })
+
   PROFILE_TABS.forEach(tab => {
-    it(`"${tab}" — every field has key, label, valid type, and default`, () => {
-      profileSchema[tab].forEach(field => validateRegularField(field))
+    it(`"${tab}" — every non-heading field has key, label, valid type, and default`, () => {
+      profileSchema[tab].filter(f => f.type !== 'heading').forEach(field => validateRegularField(field))
     })
   })
 

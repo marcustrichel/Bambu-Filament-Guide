@@ -12,7 +12,7 @@ const profileItem = {
   quality: { layer_height: 0.2, first_layer_height: 0.2, outer_wall_line_width: 0.42, seam_position: 'aligned', wall_generator: 'arachne', ironing_type: 'no_ironing', precision_walls: true },
   strength: { wall_loops: 2, top_shell_layers: 3, bottom_shell_layers: 3, sparse_infill_density: 15, sparse_infill_pattern: 'grid', top_surface_pattern: 'monotonic', bottom_surface_pattern: 'monotonic', detect_overhang_wall: true },
   speed: { outer_wall: 200, inner_wall: 300, sparse_infill: 270, solid_infill: 250, top_surface: 200, first_layer: 50, travel: 500, acceleration: 5000 },
-  support: { enable: false, type: 'tree', style: 'tree_slim', threshold_angle: 30 },
+  support: { enable: false, type: 'tree(auto)', style: 'tree_slim', threshold_angle: 30 },
   others: { brim_type: 'auto', brim_width: 5, skirt_loops: 0, elephant_foot_compensation: 0.0 },
 }
 
@@ -98,7 +98,7 @@ describe('EditorModal — profile type', () => {
     await speedTab.trigger('click')
     const accelInput = wrapper.findAll('input[type="number"]').find((input) => {
       const label = input.element.closest('.group')?.querySelector('label')?.textContent
-      return label?.includes('Acceleration')
+      return label?.includes('Normal printing')
     })
     expect(accelInput.element.value).toBe('10000')
   })
@@ -157,14 +157,44 @@ describe('EditorModal — profile type', () => {
     const wrapper = mountProfile()
     const speedTab = wrapper.findAll('button').find(b => b.text().trim() === 'Speed')
     await speedTab.trigger('click')
-    expect(wrapper.text()).toContain('Outer Wall')
+    expect(wrapper.text()).toContain('Outer wall')
+    expect(wrapper.text()).toContain('Initial layer speed')
+    expect(wrapper.text()).toContain('Overhang speed (50% overhang)')
+    expect(wrapper.text()).toContain('Acceleration')
   })
 
   it('switching to Strength tab shows strength-specific fields', async () => {
     const wrapper = mountProfile()
     const strengthTab = wrapper.findAll('button').find(b => b.text().trim() === 'Strength')
     await strengthTab.trigger('click')
-    expect(wrapper.text()).toContain('Wall Loops')
+    expect(wrapper.text()).toContain('Wall loops')
+    expect(wrapper.text()).toContain('Top/bottom shells')
+    expect(wrapper.text()).toContain('Length of sparse infill anchor')
+  })
+
+  it('switching to Quality tab shows the new section headings', async () => {
+    const wrapper = mountProfile()
+    expect(wrapper.text()).toContain('Line width')
+    expect(wrapper.text()).toContain('Precision')
+    expect(wrapper.text()).toContain('Elephant foot compensation')
+  })
+
+  it('switching to Support tab shows the new section headings', async () => {
+    const wrapper = mountProfile()
+    const supportTab = wrapper.findAll('button').find(b => b.text().trim() === 'Support')
+    await supportTab.trigger('click')
+    expect(wrapper.text()).toContain('Filament for Supports')
+    expect(wrapper.text()).toContain('Independent support layer height')
+  })
+
+  it('switching to Others tab shows the new section headings and Notes/Post-processing textareas', async () => {
+    const wrapper = mountProfile()
+    const othersTab = wrapper.findAll('button').find(b => b.text().trim() === 'Others')
+    await othersTab.trigger('click')
+    expect(wrapper.text()).toContain('Prime tower')
+    expect(wrapper.text()).toContain('Special mode')
+    expect(wrapper.text()).toContain('Post-processing scripts')
+    expect(wrapper.findAll('textarea').length).toBe(2)
   })
 })
 

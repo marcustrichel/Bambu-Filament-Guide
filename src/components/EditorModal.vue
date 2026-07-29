@@ -93,7 +93,7 @@ const activeTabLabel = computed(() => {
 
 const handleModelChange = () => {
   const defaults = PRINTER_MODEL_SPEED_DEFAULTS[editingItem.value.printer_model];
-  if (defaults) editingItem.value.speed = { ...defaults };
+  if (defaults) editingItem.value.speed = { ...editingItem.value.speed, ...defaults };
 };
 
 const handleSave = () => {
@@ -176,72 +176,87 @@ const handleClose = () => {
           </h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-            <div v-for="field in currentSchema[activeTab]" :key="field.key" class="group">
-              <label class="block text-sm font-medium text-gray-700 mb-1 group-hover:text-emerald-600 transition-colors">
-                {{ field.label }}
-              </label>
-              
-              <div class="relative">
-                <!-- Inputs based on type -->
-                <input 
-                  v-if="field.type === 'number'"
-                  type="number"
-                  v-model.number="editingItem[activeTab][field.key]"
-                  :step="field.step || 1"
-                  :disabled="!isOwner"
-                  class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                >
-                
-                <input 
-                  v-if="field.type === 'text'"
-                  type="text"
-                  v-model="editingItem[activeTab][field.key]"
-                  :disabled="!isOwner"
-                  class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                >
+            <template v-for="field in currentSchema[activeTab]" :key="field.key || field.label">
+              <!-- Section heading, e.g. "Layer height", "Precision" -->
+              <div v-if="field.type === 'heading'" class="col-span-full pt-4 first:pt-0 mt-2 first:mt-0 border-t first:border-t-0 border-gray-200">
+                <h4 class="text-sm font-bold text-gray-500 uppercase tracking-wide">{{ field.label }}</h4>
+              </div>
 
-                <div v-if="field.type === 'color'" class="flex gap-2">
-                   <input 
-                      type="color"
-                      v-model="editingItem[activeTab][field.key]"
-                      :disabled="!isOwner"
-                      class="h-9 w-12 rounded border p-0.5 cursor-pointer disabled:cursor-not-allowed"
-                   >
-                   <input 
-                      type="text"
-                      v-model="editingItem[activeTab][field.key]"
-                      :disabled="!isOwner"
-                      class="bambu-input flex-1 p-2 rounded text-gray-900 text-sm uppercase border border-gray-300"
-                   >
-                </div>
-                
-                <select 
-                  v-else-if="field.type === 'select'"
-                  v-model="editingItem[activeTab][field.key]"
-                  :disabled="!isOwner"
-                  class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 bg-white border border-gray-300"
-                >
-                  <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
-                </select>
-                
-                <div v-else-if="field.type === 'boolean'" class="flex items-center h-10 bg-gray-50 rounded px-2 border border-gray-200">
-                  <input 
-                    type="checkbox"
+              <div v-else class="group" :class="field.type === 'textarea' ? 'col-span-full' : ''">
+                <label class="block text-sm font-medium text-gray-700 mb-1 group-hover:text-emerald-600 transition-colors">
+                  {{ field.label }}
+                </label>
+
+                <div class="relative">
+                  <!-- Inputs based on type -->
+                  <input
+                    v-if="field.type === 'number'"
+                    type="number"
+                    v-model.number="editingItem[activeTab][field.key]"
+                    :step="field.step || 1"
+                    :disabled="!isOwner"
+                    class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  >
+
+                  <input
+                    v-if="field.type === 'text'"
+                    type="text"
                     v-model="editingItem[activeTab][field.key]"
                     :disabled="!isOwner"
-                    class="h-5 w-5 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed"
+                    class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                   >
-                  <span class="ml-2 text-sm font-medium" :class="editingItem[activeTab][field.key] ? 'text-emerald-600' : 'text-gray-500'">
-                    {{ editingItem[activeTab][field.key] ? 'Enabled' : 'Disabled' }}
-                  </span>
-                </div>
 
-                <div v-if="field.suffix && field.type !== 'boolean'" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <span class="text-gray-400 text-xs font-medium">{{ field.suffix }}</span>
+                  <textarea
+                    v-if="field.type === 'textarea'"
+                    v-model="editingItem[activeTab][field.key]"
+                    :disabled="!isOwner"
+                    rows="4"
+                    class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-y"
+                  ></textarea>
+
+                  <div v-if="field.type === 'color'" class="flex gap-2">
+                     <input
+                        type="color"
+                        v-model="editingItem[activeTab][field.key]"
+                        :disabled="!isOwner"
+                        class="h-9 w-12 rounded border p-0.5 cursor-pointer disabled:cursor-not-allowed"
+                     >
+                     <input
+                        type="text"
+                        v-model="editingItem[activeTab][field.key]"
+                        :disabled="!isOwner"
+                        class="bambu-input flex-1 p-2 rounded text-gray-900 text-sm uppercase border border-gray-300"
+                     >
+                  </div>
+
+                  <select
+                    v-else-if="field.type === 'select'"
+                    v-model="editingItem[activeTab][field.key]"
+                    :disabled="!isOwner"
+                    class="bambu-input w-full p-2 rounded text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-500 bg-white border border-gray-300"
+                  >
+                    <option v-for="opt in field.options" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+
+                  <div v-else-if="field.type === 'boolean'" class="flex items-center h-10 bg-gray-50 rounded px-2 border border-gray-200">
+                    <input
+                      type="checkbox"
+                      v-model="editingItem[activeTab][field.key]"
+                      :disabled="!isOwner"
+                      class="h-5 w-5 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer disabled:cursor-not-allowed"
+                    >
+                    <span class="ml-2 text-sm font-medium" :class="editingItem[activeTab][field.key] ? 'text-emerald-600' : 'text-gray-500'">
+                      {{ editingItem[activeTab][field.key] ? 'Enabled' : 'Disabled' }}
+                    </span>
+                  </div>
+
+                  <div v-if="field.suffix && field.type !== 'boolean' && field.type !== 'textarea'" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span class="text-gray-400 text-xs font-medium">{{ field.suffix }}</span>
+                  </div>
                 </div>
+                <p v-if="field.desc" class="mt-1 text-xs text-gray-400">{{ field.desc }}</p>
               </div>
-              <p v-if="field.desc" class="mt-1 text-xs text-gray-400">{{ field.desc }}</p>
-            </div>
+            </template>
           </div>
         </div>
       </div>
