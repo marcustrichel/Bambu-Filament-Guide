@@ -161,6 +161,14 @@ A persistent search box lives in the sidebar (not tied to any one tab), with a t
 
 Typing a non-empty query replaces whatever the sidebar nav currently shows with a **Search Results** view (`isSearching` in `App.vue`), sectioned by type per the active scope; clearing the box restores the previously-active tab. This is deliberately a full takeover of the main content area rather than a filter applied within each tab, since "both" needs a single place to show mixed results.
 
+### 4.9 Bambu Studio Export
+Every saved print profile and filament can be downloaded as a real Bambu Studio preset `.json` file — via a **⬇ Download** button on each card, or **⬇ Download for Bambu Studio** in the `EditorModal` footer (both available to any viewer, not just the owner). `src/lib/bambuExport.js` does the conversion:
+
+*   **Field mapping:** a per-tab table (`PROCESS_MAP` for print profiles, `FILAMENT_MAP` for filaments) maps BambuDB's internal field names to the real keys Bambu Studio's own config files use (e.g. `elephant_foot_compensation` → `elefant_foot_compensation`, matching Bambu's own typo), including value-format transforms (booleans → `"0"`/`"1"`, percent fields get a `%` suffix, a handful of enum values get remapped, e.g. `monotonic_line` → `monotonicline`). These mappings were verified against Bambu Studio's own shipped profiles in [`bambulab/BambuStudio`](https://github.com/bambulab/BambuStudio/tree/master/resources/profiles/BBL) (`fdm_process_common.json`, `fdm_filament_common.json`, and per-model/per-material leaf files) — fields without a confirmed real-world key are simply left out of the export rather than risking a wrong or malformed value.
+*   **Print profiles export only what changed:** Bambu Studio presets inherit from a base (`inherits: "fdm_process_common"`), so a value is only written to the file if it differs from BambuDB's own schema default — anything untouched just falls back to Bambu Studio's built-in default for that field. `compatible_printers` is always set from the profile's `printer_model` (via a fixed name table, e.g. `"X1 Carbon"` → `"Bambu Lab X1 Carbon 0.4 nozzle"`), so the preset only shows up for the right machine in Bambu Studio.
+*   **Filaments export everything:** every mapped field is written regardless of whether it matches a default, since a wrong or missing temperature/flow value has real consequences — there's no safe universal fallback the way there is for cosmetic print settings.
+*   **Where the file goes:** dropping the downloaded `.json` into `%AppData%\BambuStudio\user\<id>\print\` (profiles) or `\filament\` (filaments) and restarting Bambu Studio makes it appear as a user preset — documented for end users in [USER_GUIDE.md](USER_GUIDE.md).
+
 ## 5. Component Structure
 
 ### `App.vue` (Main Controller)
@@ -204,6 +212,11 @@ Typing a non-empty query replaces whatever the sidebar nav currently shows with 
     *   Single source of truth for configuration fields.
     *   Defines UI labels, types, and tooltips.
 
+### `lib/bambuExport.js`
+*   **Responsibilities:**
+    *   Converts a print profile or filament object into a real Bambu Studio preset JSON (see Section 4.9).
+    *   `buildPrintProfileExport`, `buildFilamentExport`, `downloadBambuProfile`, `sanitizeFilename` — used by both `App.vue` (card-level download buttons) and `EditorModal.vue` (editor footer button).
+
 ## 6. Edge Functions
 
 `supabase/functions/update-user-email/` — the one server-side function this app has, and it exists solely because changing *another user's* Auth email requires the Admin API (`service_role` key), which must never reach the browser.
@@ -219,7 +232,7 @@ Full API documentation for every edge function lives outside this doc and must s
 
 Three layers, from fastest/most-isolated to slowest/most-realistic:
 
-*   **Unit / component tests** (`src/__tests__/*.test.js`, Vitest + Vue Test Utils): each component mounted in isolation with fake props. Covers `schemas.js` shape validation, and rendering/emit behavior of `AuthModal`, `ResetPasswordModal`, `PrinterModal`, `UserEditModal`, and `EditorModal` (both profile and filament layouts).
+*   **Unit / component tests** (`src/__tests__/*.test.js`, Vitest + Vue Test Utils): each component mounted in isolation with fake props. Covers `schemas.js` shape validation, `bambuExport.js`'s field mapping/value formatting/diffing logic, and rendering/emit behavior of `AuthModal`, `ResetPasswordModal`, `PrinterModal`, `UserEditModal`, and `EditorModal` (both profile and filament layouts, including the Download-for-Bambu-Studio button).
 *   **Integration tests** (`src/__tests__/App.integration.test.js`): mounts the full `App.vue` tree with a mocked `@/lib/supabase` module — a thenable "chain" mock standing in for the PostgREST query builder (smart enough to narrow an array fixture by a chained `.eq()` before `.single()`, so one `user_profiles` fixture can serve both "my own row" and "every row" queries), plus mocked `.rpc()` and `.functions.invoke()`. Exercises the actual handler logic in `App.vue` — profile/filament/printer/printer-model/user create, update & delete, forking, favorites, sign out, both halves of password reset, the full access-level matrix (nav gating, elevated vs. admin edit rights, role changes, email changes via the Edge Function, disabled-account write-blocking), and the search scope toggle — asserting on the exact table/payload sent to Supabase and the resulting UI state.
 *   **End-to-end tests** (`e2e/*.spec.js`, Playwright): drives the real app in a real Chromium browser against `npm run dev`, with Supabase REST (`/rest/v1/**`), Auth (`/auth/v1/**`), and Edge Function (`/functions/v1/**`) requests intercepted and served canned responses (`e2e/fixtures/supabase-mock.js`) instead of hitting the live project. The REST mock respects `?col=eq.value` filters and the `.single()` Accept header, closely enough to real PostgREST behavior to test role-gated flows properly. This keeps E2E runs deterministic and side-effect-free while still validating the real DOM, routing, and network-request shapes. Run via `npm run test:e2e`.
 

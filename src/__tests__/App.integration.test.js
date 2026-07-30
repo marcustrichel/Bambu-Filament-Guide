@@ -198,6 +198,27 @@ describe('App.vue — print profile CRUD', () => {
     )
     window.confirm.mockRestore()
   })
+
+  it('downloads a profile as a Bambu Studio preset file from its card, without any network calls', async () => {
+    const profile = {
+      id: 'profile-1', name: 'Mine', printer_model: 'X1 Carbon', user_id: mockUser.id,
+      quality: {}, strength: {}, speed: {}, support: {}, others: {},
+    }
+    supabase.__chains.print_profiles._result = { data: [profile], error: null }
+    const wrapper = await mountSignedIn()
+
+    const createObjectURL = vi.fn(() => 'blob:mock')
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() })
+
+    const downloadBtn = wrapper.findAll('button').find((b) => b.text().includes('Download'))
+    await downloadBtn.trigger('click')
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    expect(supabase.__chains.print_profiles.insert).not.toHaveBeenCalled()
+    expect(supabase.__chains.print_profiles.update).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+  })
 })
 
 // --- Filaments ---
@@ -222,6 +243,28 @@ describe('App.vue — filament CRUD', () => {
     expect(supabase.__chains.filaments.insert).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'New Generic PLA', user_id: mockUser.id, print_profile_id: 'profile-a' })
     )
+  })
+
+  it('downloads a filament as a Bambu Studio preset file from its card, without any network calls', async () => {
+    const filament = {
+      id: 'filament-1', name: 'My PLA', user_id: mockUser.id, print_profile_id: 'profile-a',
+      basic_settings: { filament_type: 'PLA' }, temp_settings: {}, cooling_settings: {}, override_settings: {}, scarf_seam: {}, notes: '',
+    }
+    supabase.__chains.filaments._result = { data: [filament], error: null }
+    const wrapper = await mountSignedIn()
+    await goToView(wrapper, 'Filaments')
+
+    const createObjectURL = vi.fn(() => 'blob:mock')
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() })
+
+    const downloadBtn = wrapper.findAll('button').find((b) => b.text().includes('Download'))
+    await downloadBtn.trigger('click')
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    expect(supabase.__chains.filaments.insert).not.toHaveBeenCalled()
+    expect(supabase.__chains.filaments.update).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
   })
 
   it('clones a filament from the Clone button inside the editor modal', async () => {

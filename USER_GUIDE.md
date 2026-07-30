@@ -34,7 +34,7 @@ Forgot your password? You don't need to remember it to get back in:
 
 1. Click **Sign In / Up**, then click **Forgot password?**.
 2. Enter your email and click **Send Reset Link**.
-3. Check your email for a message from Supabase with a reset link. Click it — it brings you back to BambuDB.
+3. Check your email for a reset link and click it — it brings you back to BambuDB.
 4. A **Set a New Password** dialog opens automatically. Enter and confirm your new password (at least 6 characters) and click **Update Password**.
 
 You can click **Back to Sign In** at any point before sending the email if you remembered your password after all.
@@ -70,6 +70,18 @@ There are two ways to copy a profile — both create your own editable copy name
 
 Click the ★ on any profile card to star it. Favorites are private to your account.
 
+### Downloading for Bambu Studio
+
+Every saved profile (yours or someone else's) can be downloaded as a Bambu Studio preset file — click **⬇ Download** on a card, or **⬇ Download for Bambu Studio** in the bottom-left of the editor. This works for anyone, signed in or not.
+
+To use the downloaded file in Bambu Studio:
+
+1. Close Bambu Studio if it's open.
+2. Copy the downloaded `.json` file into your Bambu Studio user preset folder — on Windows this is `%AppData%\BambuStudio\user\<your account ID>\print\` (the folder name under `user` is a number if you're signed into a Bambu account, or `default` otherwise).
+3. Reopen Bambu Studio. The profile appears in the print settings dropdown as a user preset for its target printer.
+
+Only settings you've actually customized are included in the file — anything left at BambuDB's defaults is simply left out, so Bambu Studio's own built-in default is used for that setting instead. A handful of very advanced or rarely-used settings aren't exported at all and always fall back to Bambu Studio's default.
+
 ## Filaments
 
 ### Browsing
@@ -90,6 +102,12 @@ Open a filament you own the same way as profiles — click its card, adjust valu
 ### Cloning a Filament
 
 Click **Clone** in the bottom-left of the filament editor to make your own editable copy of any saved filament (yours or someone else's), named "*(original name)* (Copy)". Available once the filament has been saved at least once.
+
+### Downloading for Bambu Studio
+
+Like print profiles, every saved filament can be downloaded as a Bambu Studio preset file — click **⬇ Download** on a card, or **⬇ Download for Bambu Studio** in the bottom-left of the editor. Unlike print profiles, filament files always include every setting (temperatures, cooling, flow, retraction, etc.) regardless of whether it matches a default, since getting a temperature wrong has real consequences.
+
+Copy the downloaded `.json` file into `%AppData%\BambuStudio\user\<your account ID>\filament\` and restart Bambu Studio to see it in the filament dropdown as a user preset.
 
 ## Printers
 

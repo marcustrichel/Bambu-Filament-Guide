@@ -463,3 +463,39 @@ describe('EditorModal — clone', () => {
     expect(wrapper.emitted('clone')[0][0]).toMatchObject({ id: 'filament-1', name: 'Test PLA' })
   })
 })
+
+describe('EditorModal — download for Bambu Studio', () => {
+  const findDownloadBtn = (wrapper) => wrapper.findAll('button').find(b => b.text().includes('Download for Bambu Studio'))
+
+  it('shows the Download button for a saved profile, even when read-only', () => {
+    const wrapper = mountProfile({ isOwner: false, canClone: false })
+    expect(findDownloadBtn(wrapper)).not.toBeUndefined()
+  })
+
+  it('hides the Download button for a not-yet-saved (new) profile', () => {
+    const wrapper = mountProfile({ item: { ...profileItem, id: undefined } })
+    expect(findDownloadBtn(wrapper)).toBeUndefined()
+  })
+
+  it('shows the Download button for a saved filament', () => {
+    const wrapper = mountFilament()
+    expect(findDownloadBtn(wrapper)).not.toBeUndefined()
+  })
+
+  it('triggers a Bambu Studio preset file download when clicked, without emitting save/clone', async () => {
+    const createObjectURL = vi.fn(() => 'blob:mock')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL })
+
+    const wrapper = mountProfile()
+    await findDownloadBtn(wrapper).trigger('click')
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    const blob = createObjectURL.mock.calls[0][0]
+    expect(blob.type).toBe('application/json')
+    expect(wrapper.emitted('save')).toBeFalsy()
+    expect(wrapper.emitted('clone')).toBeFalsy()
+
+    vi.unstubAllGlobals()
+  })
+})

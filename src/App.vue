@@ -6,6 +6,7 @@ import ResetPasswordModal from '@/components/ResetPasswordModal.vue';
 import EditorModal from '@/components/EditorModal.vue';
 import PrinterModal from '@/components/PrinterModal.vue';
 import UserEditModal from '@/components/UserEditModal.vue';
+import { buildPrintProfileExport, buildFilamentExport, downloadBambuProfile, sanitizeFilename } from '@/lib/bambuExport';
 
 // --- State ---
 const user = ref(null);
@@ -421,6 +422,14 @@ const handleClone = (item) => {
   else cloneFilament(item);
 };
 
+const downloadProfile = (profile) => {
+  downloadBambuProfile(buildPrintProfileExport(profile), `${sanitizeFilename(profile.name)}.json`);
+};
+
+const downloadFilament = (fil) => {
+  downloadBambuProfile(buildFilamentExport(fil), `${sanitizeFilename(fil.name)}.json`);
+};
+
 const handleSaveItem = async (itemToSave) => {
   loading.value = true;
   const table = editorType.value === 'profile' ? 'print_profiles' : 'filaments';
@@ -665,8 +674,9 @@ const handleSendUserPasswordReset = async ({ email }) => {
                   <div class="flex justify-between"><span>Accel:</span> <span class="font-medium text-gray-900">{{ profile.speed?.acceleration || '5000' }}</span></div>
                 </div>
               </div>
-              <div v-if="user && !isOwner(profile)" class="bg-gray-50 p-3 px-5 border-t border-gray-100 flex justify-end items-center">
-                <button @click.stop="cloneProfile(profile)" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">Fork</button>
+              <div class="bg-gray-50 p-3 px-5 border-t border-gray-100 flex justify-end items-center gap-4">
+                <button @click.stop="downloadProfile(profile)" title="Download as a Bambu Studio preset file" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">⬇ Download</button>
+                <button v-if="user && !isOwner(profile)" @click.stop="cloneProfile(profile)" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">Fork</button>
               </div>
             </div>
           </div>
@@ -694,6 +704,9 @@ const handleSendUserPasswordReset = async ({ email }) => {
                     <div class="font-mono text-gray-800 font-bold">{{ fil.cooling_settings?.max_fan_speed }}%</div>
                   </div>
                 </div>
+              </div>
+              <div class="bg-gray-50 p-3 px-5 border-t border-gray-100 flex justify-end items-center">
+                <button @click.stop="downloadFilament(fil)" title="Download as a Bambu Studio preset file" class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1">⬇ Download</button>
               </div>
             </div>
           </div>

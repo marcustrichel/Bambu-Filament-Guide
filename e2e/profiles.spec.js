@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
 import { mockSupabase, signIn } from './fixtures/supabase-mock.js';
 
@@ -6,7 +7,7 @@ const communityProfile = {
   user_id: 'someone-else',
   name: 'Community 0.20mm',
   printer_model: 'A1 Mini',
-  quality: { layer_height: 0.2 },
+  quality: { layer_height: 0.28 },
   strength: {},
   speed: { acceleration: 5000 },
   support: {},
@@ -93,6 +94,24 @@ test('edits fields across the expanded Quality/Strength/Support/Others tabs and 
   expect(body.strength.wall_loops).toBe(3);
   expect(body.support.support_independent_layer_height).toBe(false);
   expect(body.others.post_processing_scripts).toBe('/scripts/notify.sh');
+});
+
+test('downloads a community profile as a Bambu Studio preset file from its card', async ({ page }) => {
+  await mockSupabase(page, { profiles: [communityProfile] });
+  await page.goto('/');
+
+  const card = page.locator('.cursor-pointer').filter({ hasText: 'Community 0.20mm' });
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    card.getByRole('button', { name: 'Download' }).click(),
+  ]);
+
+  expect(download.suggestedFilename()).toBe('Community 0.20mm.json');
+  const contents = JSON.parse(readFileSync(await download.path(), 'utf-8'));
+  expect(contents.type).toBe('process');
+  expect(contents.name).toBe('Community 0.20mm');
+  expect(contents.compatible_printers).toEqual(['Bambu Lab A1 mini 0.4 nozzle']);
+  expect(contents.layer_height).toBe('0.28');
 });
 
 test('clones a community profile from the Clone button inside the editor', async ({ page }) => {
