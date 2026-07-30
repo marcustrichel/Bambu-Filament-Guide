@@ -4,14 +4,15 @@ BambuDB is a place to store, share, and reuse print profiles, filament settings,
 
 ## Getting Around
 
-The sidebar has four sections:
+The sidebar has five sections:
 
 - **📄 Print Profiles** — slicer settings (layer height, speed, supports, etc.), targeted at a printer model.
 - **🧶 Filaments** — material settings (temperatures, cooling, flow) for a specific filament.
 - **🖨️ Printers** — your own physical printers, each with an optional default print profile.
 - **🔧 Printer Models** — the shared list of target printer models used by the two sections above.
+- **📖 User Guide** — this guide, right in the app.
 
-You can browse Print Profiles, Filaments, and Printer Models without an account — these are all visible to everyone (read-only unless you own them, or in the case of Printer Models, unless you're signed in to add/remove). Printers are private: you only ever see your own.
+You can browse Print Profiles, Filaments, Printer Models, and this User Guide without an account — these are all visible to everyone (read-only unless you own them, or in the case of Printer Models, unless you're signed in to add/remove). Printers are private: you only ever see your own.
 
 ## Searching
 

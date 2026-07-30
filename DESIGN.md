@@ -169,6 +169,9 @@ Every saved print profile and filament can be downloaded as a real Bambu Studio 
 *   **Filaments export everything:** every mapped field is written regardless of whether it matches a default, since a wrong or missing temperature/flow value has real consequences — there's no safe universal fallback the way there is for cosmetic print settings.
 *   **Where the file goes:** dropping the downloaded `.json` into `%AppData%\BambuStudio\user\<id>\print\` (profiles) or `\filament\` (filaments) and restarting Bambu Studio makes it appear as a user preset — documented for end users in [USER_GUIDE.md](USER_GUIDE.md).
 
+### 4.10 User Guide (in-app)
+The full [USER_GUIDE.md](USER_GUIDE.md) is rendered inside the app itself — a **📖 User Guide** nav item (visible to everyone, signed in or not, like the other public tabs) shows `components/UserGuideView.vue`, which imports the markdown file as a raw string at build time (Vite's `?raw` import suffix) and renders it to HTML with `marked`, styled via the `@tailwindcss/typography` `prose` class. This is a one-way, build-time embed — updating `USER_GUIDE.md` and shipping a new build is what keeps the in-app copy current; there's no live fetch of the file at runtime. The rendered guide is also published as a standalone Claude Artifact for sharing outside the app, but the in-app tab is the canonical, always-current copy since it ships with the same deploy as the rest of the site.
+
 ## 5. Component Structure
 
 ### `App.vue` (Main Controller)
@@ -207,6 +210,10 @@ Every saved print profile and filament can be downloaded as a real Bambu Studio 
     *   Edit form for a `user_profiles` row: name, phone, role (disabled unless caller is admin), disabled toggle, an inline "Change Email" field, and a "Send Password Reset Email" button.
     *   Emits `save` (the `user_profiles` update), `change-email` (invokes the Edge Function), `send-password-reset` (reuses `resetPasswordForEmail`), and `close` (unsaved-changes confirm guard).
 
+### `components/UserGuideView.vue`
+*   **Responsibilities:**
+    *   Renders `USER_GUIDE.md` (imported raw at build time) as HTML via `marked`, styled with Tailwind's `prose` typography plugin (see Section 4.10). No props, no state — static content.
+
 ### `constants/schemas.js`
 *   **Responsibilities:**
     *   Single source of truth for configuration fields.
@@ -232,7 +239,7 @@ Full API documentation for every edge function lives outside this doc and must s
 
 Three layers, from fastest/most-isolated to slowest/most-realistic:
 
-*   **Unit / component tests** (`src/__tests__/*.test.js`, Vitest + Vue Test Utils): each component mounted in isolation with fake props. Covers `schemas.js` shape validation, `bambuExport.js`'s field mapping/value formatting/diffing logic, and rendering/emit behavior of `AuthModal`, `ResetPasswordModal`, `PrinterModal`, `UserEditModal`, and `EditorModal` (both profile and filament layouts, including the Download-for-Bambu-Studio button).
+*   **Unit / component tests** (`src/__tests__/*.test.js`, Vitest + Vue Test Utils): each component mounted in isolation with fake props. Covers `schemas.js` shape validation, `bambuExport.js`'s field mapping/value formatting/diffing logic, `UserGuideView.vue`'s markdown-to-HTML rendering, and rendering/emit behavior of `AuthModal`, `ResetPasswordModal`, `PrinterModal`, `UserEditModal`, and `EditorModal` (both profile and filament layouts, including the Download-for-Bambu-Studio button).
 *   **Integration tests** (`src/__tests__/App.integration.test.js`): mounts the full `App.vue` tree with a mocked `@/lib/supabase` module — a thenable "chain" mock standing in for the PostgREST query builder (smart enough to narrow an array fixture by a chained `.eq()` before `.single()`, so one `user_profiles` fixture can serve both "my own row" and "every row" queries), plus mocked `.rpc()` and `.functions.invoke()`. Exercises the actual handler logic in `App.vue` — profile/filament/printer/printer-model/user create, update & delete, forking, favorites, sign out, both halves of password reset, the full access-level matrix (nav gating, elevated vs. admin edit rights, role changes, email changes via the Edge Function, disabled-account write-blocking), and the search scope toggle — asserting on the exact table/payload sent to Supabase and the resulting UI state.
 *   **End-to-end tests** (`e2e/*.spec.js`, Playwright): drives the real app in a real Chromium browser against `npm run dev`, with Supabase REST (`/rest/v1/**`), Auth (`/auth/v1/**`), and Edge Function (`/functions/v1/**`) requests intercepted and served canned responses (`e2e/fixtures/supabase-mock.js`) instead of hitting the live project. The REST mock respects `?col=eq.value` filters and the `.single()` Accept header, closely enough to real PostgREST behavior to test role-gated flows properly. This keeps E2E runs deterministic and side-effect-free while still validating the real DOM, routing, and network-request shapes. Run via `npm run test:e2e`.
 
