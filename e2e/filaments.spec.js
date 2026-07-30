@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { test, expect } from '@playwright/test';
 import { mockSupabase, signIn } from './fixtures/supabase-mock.js';
 
@@ -146,6 +147,24 @@ test('edits Advanced tab G-code fields on a new filament and saves them', async 
   const body = request.postDataJSON();
   expect(body.start_gcode).toBe('M104 S200');
   expect(body.end_gcode).toBe('M104 S0');
+});
+
+test('downloads a community filament as a Bambu Studio preset file from its card', async ({ page }) => {
+  await mockSupabase(page, { profiles: [profileA], filaments: [communityFilament] });
+  await page.goto('/');
+  await page.getByRole('button', { name: '🧶 Filaments' }).click();
+
+  const card = page.locator('.cursor-pointer').filter({ hasText: 'Community PLA' });
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    card.getByRole('button', { name: 'Download' }).click(),
+  ]);
+
+  expect(download.suggestedFilename()).toBe('Community PLA.json');
+  const contents = JSON.parse(readFileSync(await download.path(), 'utf-8'));
+  expect(contents.type).toBe('filament');
+  expect(contents.name).toBe('Community PLA');
+  expect(contents.nozzle_temperature_initial_layer).toEqual(['220']);
 });
 
 test('clones a community filament from the Clone button inside the editor', async ({ page }) => {

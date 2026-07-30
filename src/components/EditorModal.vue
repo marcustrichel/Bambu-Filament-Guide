@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { profileSchema, filamentSchema, PRINTER_MODEL_SPEED_DEFAULTS } from '@/constants/schemas';
+import { buildPrintProfileExport, buildFilamentExport, downloadBambuProfile, sanitizeFilename } from '@/lib/bambuExport';
 
 const props = defineProps({
   item: Object,          // The profile or filament object being edited
@@ -106,6 +107,13 @@ const handleSave = () => {
 
 const handleClone = () => {
   emit('clone', editingItem.value);
+};
+
+const handleDownload = () => {
+  const data = props.type === 'profile'
+    ? buildPrintProfileExport(editingItem.value)
+    : buildFilamentExport(editingItem.value);
+  downloadBambuProfile(data, `${sanitizeFilename(editingItem.value.name)}.json`);
 };
 
 const handleClose = () => {
@@ -263,13 +271,22 @@ const handleClose = () => {
 
       <!-- Footer -->
       <div class="p-4 border-t border-gray-200 bg-white flex justify-between items-center">
-        <button
-          v-if="canClone && editingItem.id"
-          @click="handleClone"
-          class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-        >
-          Clone
-        </button>
+        <div v-if="editingItem.id" class="flex gap-3">
+          <button
+            v-if="canClone"
+            @click="handleClone"
+            class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+          >
+            Clone
+          </button>
+          <button
+            @click="handleDownload"
+            title="Download as a Bambu Studio preset file"
+            class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+          >
+            ⬇ Download for Bambu Studio
+          </button>
+        </div>
         <div v-else></div>
         <div class="flex gap-3">
           <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
@@ -716,13 +733,22 @@ const handleClose = () => {
 
         <!-- Footer (same controls as the profile editor) -->
         <div class="p-4 border-t border-gray-200 bg-white flex justify-between items-center">
-          <button
-            v-if="canClone && editingItem.id"
-            @click="handleClone"
-            class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
-          >
-            Clone
-          </button>
+          <div v-if="editingItem.id" class="flex gap-3">
+            <button
+              v-if="canClone"
+              @click="handleClone"
+              class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+            >
+              Clone
+            </button>
+            <button
+              @click="handleDownload"
+              title="Download as a Bambu Studio preset file"
+              class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+            >
+              ⬇ Download for Bambu Studio
+            </button>
+          </div>
           <div v-else></div>
           <div class="flex gap-3">
           <button @click="handleClose" class="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 font-medium transition-colors">
