@@ -6,6 +6,7 @@ import ResetPasswordModal from '@/components/ResetPasswordModal.vue';
 import EditorModal from '@/components/EditorModal.vue';
 import PrinterModal from '@/components/PrinterModal.vue';
 import UserEditModal from '@/components/UserEditModal.vue';
+import UserGuideView from '@/components/UserGuideView.vue';
 import { buildPrintProfileExport, buildFilamentExport, downloadBambuProfile, sanitizeFilename } from '@/lib/bambuExport';
 
 // --- State ---
@@ -595,6 +596,9 @@ const handleSendUserPasswordReset = async ({ email }) => {
           <button @click="currentView='printer_models'" :class="currentView==='printer_models' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
             <span class="mr-3">🔧</span> Printer Models
           </button>
+          <button @click="currentView='guide'" :class="currentView==='guide' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            <span class="mr-3">📖</span> User Guide
+          </button>
           <button v-if="canManageUsers" @click="currentView='users'" :class="currentView==='users' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'" class="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors">
             <span class="mr-3">👥</span> Users
           </button>
@@ -782,6 +786,11 @@ const handleSendUserPasswordReset = async ({ email }) => {
               No printer models yet.
             </div>
           </div>
+        </div>
+
+        <!-- USER GUIDE -->
+        <div v-if="currentView === 'guide' && !isSearching">
+          <UserGuideView />
         </div>
 
         <!-- USERS (elevated/admin only) -->

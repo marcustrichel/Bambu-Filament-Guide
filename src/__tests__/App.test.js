@@ -110,4 +110,13 @@ describe('App.vue — smoke tests', () => {
     await printersBtn.trigger('click')
     expect(wrapper.text()).toContain('Sign in to manage your printers.')
   })
+
+  it('shows the User Guide when its nav item is clicked, without needing to be signed in', async () => {
+    const wrapper = mount(App)
+    await flushPromises()
+    const guideBtn = wrapper.findAll('button').find(b => b.text().includes('User Guide'))
+    await guideBtn.trigger('click')
+    expect(wrapper.findComponent({ name: 'UserGuideView' }).exists()).toBe(true)
+    expect(wrapper.find('.prose h1').text()).toBe('BambuDB User Guide')
+  })
 })
